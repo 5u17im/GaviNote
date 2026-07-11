@@ -21,24 +21,18 @@ export function useDragNode({ engineRef, bodiesRef, zoom, panX, panY }: UseDragN
     lastX: number;
     lastY: number;
     velocities: { x: number; y: number }[];
+    hasCaptured: boolean;
   } | null>(null);
 
   const onPointerDown = (e: React.PointerEvent<HTMLDivElement>, nodeId: string) => {
-    const engine = engineRef.current;
     const body = bodiesRef.current.get(nodeId);
+    const engine = engineRef.current;
     if (!body || !engine) return;
 
     // Only allow left click / main pointer button
     if (e.button !== 0) return;
 
-    const target = e.currentTarget;
-    target.setPointerCapture(e.pointerId);
-
-    // Stop existing movement, make static to prevent gravity pulling it away while holding
-    Matter.Body.setVelocity(body, { x: 0, y: 0 });
-    Matter.Body.setAngularVelocity(body, 0);
-    
-    // Save state
+    // Save initial coordinates and state (delay pointer capture until drag threshold is met)
     dragInfo.current = {
       nodeId,
       pointerId: e.pointerId,
@@ -50,6 +44,7 @@ export function useDragNode({ engineRef, bodiesRef, zoom, panX, panY }: UseDragN
       lastX: body.position.x,
       lastY: body.position.y,
       velocities: [],
+      hasCaptured: false,
     };
 
     e.stopPropagation();
@@ -66,6 +61,24 @@ export function useDragNode({ engineRef, bodiesRef, zoom, panX, panY }: UseDragN
     // Calculate delta on screen
     const dx = e.clientX - info.startX;
     const dy = e.clientY - info.startY;
+    const distance = Math.sqrt(dx * dx + dy * dy);
+
+    // Apply a 4px drag threshold to prevent micro-drags and allow click/dblclick events
+    if (!info.hasCaptured && distance < 4) {
+      return;
+    }
+
+    // Capture pointer on the first move past the threshold
+    if (!info.hasCaptured) {
+      try {
+        e.currentTarget.setPointerCapture(e.pointerId);
+      } catch {}
+      info.hasCaptured = true;
+
+      // Stop existing movement, make static to prevent gravity pulling it away while holding
+      Matter.Body.setVelocity(body, { x: 0, y: 0 });
+      Matter.Body.setAngularVelocity(body, 0);
+    }
 
     // Convert screen delta to world delta (account for zoom)
     const worldDx = dx / zoom;
@@ -105,7 +118,9 @@ export function useDragNode({ engineRef, bodiesRef, zoom, panX, panY }: UseDragN
     if (!info || !engine) return;
 
     const body = bodiesRef.current.get(info.nodeId);
-    if (body) {
+    
+    // Only apply inertia if actual dragging occurred
+    if (body && info.hasCaptured) {
       // Calculate average velocity from window
       const count = info.velocities.length;
       let avgVx = 0;
@@ -128,10 +143,10 @@ export function useDragNode({ engineRef, bodiesRef, zoom, panX, panY }: UseDragN
       });
     }
 
-    try {
-      e.currentTarget.releasePointerCapture(e.pointerId);
-    } catch (err) {
-      // Ignore capture release errors
+    if (info.hasCaptured) {
+      try {
+        e.currentTarget.releasePointerCapture(e.pointerId);
+      } catch {}
     }
 
     dragInfo.current = null;
@@ -141,6 +156,6 @@ export function useDragNode({ engineRef, bodiesRef, zoom, panX, panY }: UseDragN
     onPointerDown,
     onPointerMove,
     onPointerUp,
-    isDragging: (nodeId: string) => dragInfo.current?.nodeId === nodeId,
+    isDragging: (nodeId: string) => !!dragInfo.current?.hasCaptured && dragInfo.current?.nodeId === nodeId,
   };
 }

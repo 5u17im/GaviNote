@@ -58,7 +58,8 @@ export function SVGConnectionLayer({
               fill="none"
               stroke="transparent"
               strokeWidth={16}
-              className="cursor-pointer pointer-events-stroke hover:stroke-white/5 transition-colors"
+              className="cursor-pointer hover:stroke-white/5 transition-colors"
+              style={{ pointerEvents: 'stroke' }}
               onClick={(e) => {
                 e.stopPropagation();
                 onCycleConnection(conn.id);

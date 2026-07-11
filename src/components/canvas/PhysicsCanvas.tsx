@@ -16,6 +16,7 @@ import { NodeOverlay } from './NodeOverlay';
 import { SVGConnectionLayer } from './SVGConnectionLayer';
 import { HUDPanel } from '../hud/HUDPanel';
 import { UndoToast } from '../hud/UndoToast';
+import { NodeContextMenu } from '../nodes/NodeContextMenu';
 import { DisintegrationEffect, triggerDisintegration } from '../particles/DisintegrationEffect';
 import { CATEGORY_INFO } from '../nodes/registry';
 
@@ -68,6 +69,7 @@ export function PhysicsCanvas() {
 
   // Spacebar tracking
   const [isSpacePressed, setIsSpacePressed] = useState(false);
+  const [contextMenu, setContextMenu] = useState<{ nodeId: string; x: number; y: number } | null>(null);
 
   // Restore state from Local Storage or load demo on mount
   useEffect(() => {
@@ -302,6 +304,22 @@ export function PhysicsCanvas() {
     panY,
   });
 
+  const handleNodePointerMove = (e: React.PointerEvent<HTMLDivElement>) => {
+    if (connDraw.isDrawing) {
+      connDraw.moveConnection(e);
+    } else {
+      dragNode.onPointerMove(e);
+    }
+  };
+
+  const handleNodePointerUp = (e: React.PointerEvent<HTMLDivElement>) => {
+    if (connDraw.isDrawing) {
+      connDraw.endConnection(e);
+    } else {
+      dragNode.onPointerUp(e);
+    }
+  };
+
   // Spacebar key listeners for Panning
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -477,8 +495,9 @@ export function PhysicsCanvas() {
           onDelete={handleRemoveNode} // Trigger particle explosion during delete
           onChangeCategory={(id, cat) => updateNode(id, { category: cat })}
           onDragStart={handleNodePointerDown}
-          onDragMove={dragNode.onPointerMove}
-          onDragEnd={dragNode.onPointerUp}
+          onDragMove={handleNodePointerMove}
+          onDragEnd={handleNodePointerUp}
+          onContextMenu={(id, x, y) => setContextMenu({ nodeId: id, x, y })}
           domRefs={domRefs}
         />
       </div>
@@ -488,6 +507,28 @@ export function PhysicsCanvas() {
 
       {/* Undo deleted note Toast banner */}
       <UndoToast />
+
+      {/* Hoisted Context Menu at the screen root level (handles screen-space coords) */}
+      {contextMenu && (
+        <NodeContextMenu
+          x={contextMenu.x}
+          y={contextMenu.y}
+          onClose={() => setContextMenu(null)}
+          onEdit={() => {
+            const event = new CustomEvent(`edit-node-${contextMenu.nodeId}`);
+            window.dispatchEvent(event);
+            setContextMenu(null);
+          }}
+          onDelete={() => {
+            handleRemoveNode(contextMenu.nodeId);
+            setContextMenu(null);
+          }}
+          onChangeCategory={(cat) => {
+            updateNode(contextMenu.nodeId, { category: cat });
+            setContextMenu(null);
+          }}
+        />
+      )}
     </div>
   );
 }

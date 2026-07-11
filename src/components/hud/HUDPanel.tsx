@@ -8,7 +8,7 @@ import {
   Trash2, 
   Download, 
   Upload, 
-  Image, 
+  Image as ImageIcon, 
   Sparkles, 
   Maximize2,
   HelpCircle,
@@ -34,7 +34,7 @@ export function HUDPanel() {
     addNode,
   } = useGraviStore();
 
-  const { gravity, airFriction, magnetStrength, zoom, panX, panY } = physicsConfig;
+  const { gravity, airFriction, magnetStrength, panX, panY } = physicsConfig;
 
   // Trigger Big Bang
   const handleBigBang = () => {
@@ -174,7 +174,7 @@ export function HUDPanel() {
             {/* Gravity */}
             <div className="flex flex-col gap-1">
               <div className="flex items-center justify-between text-[11px] font-mono">
-                <span className="text-neutral-500">// Gravedad</span>
+                <span className="text-neutral-500">{"// Gravedad"}</span>
                 <span className="text-neutral-300 font-bold">
                   {gravity.toFixed(2)} G
                 </span>
@@ -194,7 +194,7 @@ export function HUDPanel() {
             {/* Friction */}
             <div className="flex flex-col gap-1">
               <div className="flex items-center justify-between text-[11px] font-mono">
-                <span className="text-neutral-500">// Fricción de Aire</span>
+                <span className="text-neutral-500">{"// Fricción de Aire"}</span>
                 <span className="text-neutral-300 font-bold">
                   {(airFriction * 1000).toFixed(0)} ms
                 </span>
@@ -214,7 +214,7 @@ export function HUDPanel() {
             {/* Magnetic Strength */}
             <div className="flex flex-col gap-1">
               <div className="flex items-center justify-between text-[11px] font-mono">
-                <span className="text-neutral-500">// Fuerza Magnética</span>
+                <span className="text-neutral-500">{"// Fuerza Magnética"}</span>
                 <span className="text-neutral-300 font-bold">
                   {magnetStrength.toFixed(1)}x
                 </span>
@@ -282,7 +282,7 @@ export function HUDPanel() {
                 onClick={handleExportPNG}
                 className="col-span-2 bg-[#0D0F17] hover:bg-[#161A26] font-mono text-xs text-neutral-300 py-2.5 cursor-pointer flex items-center justify-center gap-1.5 border-0 border-t border-[#222733]"
               >
-                <Image size={12} className="text-neutral-500" />
+                <ImageIcon size={12} className="text-neutral-500" />
                 Exportar Imagen
               </button>
             </div>

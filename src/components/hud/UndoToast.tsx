@@ -15,14 +15,10 @@ export function UndoToast() {
 
       const interval = setInterval(() => {
         setTimeLeft((prev) => {
-          if (prev <= 0) {
+          if (prev <= 1) {
             clearInterval(interval);
-            setVisible(false);
-            // Clear backup from store
-            useGraviStore.setState({ backupDeleted: null });
-            return 0;
           }
-          return prev - 1; // 100 steps in 10 seconds (100ms each)
+          return Math.max(0, prev - 1); // 100 steps in 10 seconds (100ms each)
         });
       }, 100);
 
@@ -31,6 +27,14 @@ export function UndoToast() {
       setVisible(false);
     }
   }, [backupDeleted]);
+
+  // Handle countdown expiry safely in an effect to prevent updating other components during render
+  useEffect(() => {
+    if (timeLeft <= 0 && visible) {
+      setVisible(false);
+      useGraviStore.setState({ backupDeleted: null });
+    }
+  }, [timeLeft, visible]);
 
   if (!visible || !backupDeleted) return null;
 

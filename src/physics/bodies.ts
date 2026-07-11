@@ -43,9 +43,13 @@ export function createNodeBody(
   id: string,
   x: number,
   y: number,
-  category: NodeCategory
+  category: NodeCategory,
+  width?: number,
+  height?: number
 ): Matter.Body {
   const config = CATEGORY_PHYSICS[category] || CATEGORY_PHYSICS.idea;
+  const w = width ?? config.width;
+  const h = height ?? config.height;
 
   const options: Matter.IChamferableBodyDefinition = {
     label: id, // Store node id in the label
@@ -57,7 +61,10 @@ export function createNodeBody(
     chamfer: { radius: 12 },
   };
 
-  const body = Matter.Bodies.rectangle(x, y, config.width, config.height, options);
+  const body = Matter.Bodies.rectangle(x, y, w, h, options);
+  
+  // Store dimensions inside userData for dynamic scaling detection
+  (body as any).userData = { width: w, height: h };
 
   // Matter.js automatically overrides mass based on area/density unless we set it after creation
   Matter.Body.setMass(body, config.mass);

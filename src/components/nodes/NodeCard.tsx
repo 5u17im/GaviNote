@@ -4,12 +4,13 @@ import React, { useState, useEffect } from 'react';
 import { NodeMeta, NodeCategory } from '../../types/node.types';
 import { CATEGORY_INFO } from './registry';
 import { NodeEditor } from './NodeEditor';
+import { calculateOptimalDimensions } from '../../utils/dimensions';
 
 interface NodeCardProps {
   node: NodeMeta;
   isSelected: boolean;
   onSelect: () => void;
-  onUpdate: (id: string, title: string, content: string, tags: string[]) => void;
+  onUpdate: (id: string, title: string, content: string, tags: string[], width: number, height: number) => void;
   onDelete: (id: string) => void;
   onChangeCategory: (id: string, category: NodeCategory) => void;
   onDragStart: (e: React.PointerEvent<HTMLDivElement>, id: string) => void;
@@ -56,7 +57,8 @@ export function NodeCard({
   };
 
   const handleSave = (title: string, content: string, tags: string[]) => {
-    onUpdate(node.id, title, content, tags);
+    const { width, height } = calculateOptimalDimensions(title, content, tags);
+    onUpdate(node.id, title, content, tags, width, height);
     setIsEditing(false);
   };
 
@@ -87,6 +89,11 @@ export function NodeCard({
       }}
       onContextMenu={handleContextMenu}
       onDoubleClick={handleDoubleClick}
+      onWheel={(e) => {
+        if (isEditing) {
+          e.stopPropagation();
+        }
+      }}
       className="glass-card p-[3px] rounded-md select-none z-10 hover:border-white/20 transition-colors pointer-events-auto flex flex-col"
     >
       {isEditing ? (

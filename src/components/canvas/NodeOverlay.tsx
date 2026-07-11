@@ -8,7 +8,7 @@ interface NodeOverlayProps {
   nodes: NodeMeta[];
   selectedId: string | null;
   onSelect: (id: string | null) => void;
-  onUpdate: (id: string, title: string, content: string, tags: string[]) => void;
+  onUpdate: (id: string, title: string, content: string, tags: string[], width: number, height: number) => void;
   onDelete: (id: string) => void;
   onChangeCategory: (id: string, category: NodeCategory) => void;
   onDragStart: (e: React.PointerEvent<HTMLDivElement>, id: string) => void;

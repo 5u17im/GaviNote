@@ -20,6 +20,7 @@ import { ConnectionLegend } from '../hud/ConnectionLegend';
 import { NodeContextMenu } from '../nodes/NodeContextMenu';
 import { DisintegrationEffect, triggerDisintegration } from '../particles/DisintegrationEffect';
 import { CATEGORY_INFO } from '../nodes/registry';
+import { calculateOptimalDimensions } from '../../utils/dimensions';
 
 export function PhysicsCanvas() {
   const containerRef = useRef<HTMLDivElement | null>(null);
@@ -79,7 +80,16 @@ export function PhysicsCanvas() {
       try {
         const parsed = JSON.parse(saved);
         if (Array.isArray(parsed.nodes)) {
-          loadState(parsed.nodes, parsed.connections || []);
+          // Auto-adjust dimensions of stored nodes to prevent text clipping
+          const updatedNodes = parsed.nodes.map((node: any) => {
+            const dims = calculateOptimalDimensions(node.title, node.content, node.tags || []);
+            return {
+              ...node,
+              width: dims.width,
+              height: dims.height,
+            };
+          });
+          loadState(updatedNodes, parsed.connections || []);
           return;
         }
       } catch (err) {
@@ -87,8 +97,16 @@ export function PhysicsCanvas() {
       }
     }
     
-    // Fallback: load demo micro-ecosystem
-    loadState(INITIAL_DEMO_NODES, INITIAL_DEMO_CONNECTIONS);
+    // Fallback: load demo micro-ecosystem with auto-sized node cards
+    const demoNodes = INITIAL_DEMO_NODES.map((node) => {
+      const dims = calculateOptimalDimensions(node.title, node.content, node.tags);
+      return {
+        ...node,
+        width: dims.width,
+        height: dims.height,
+      };
+    });
+    loadState(demoNodes, INITIAL_DEMO_CONNECTIONS);
   }, [loadState]);
 
   // Debounced Auto-save to Local Storage
@@ -112,7 +130,7 @@ export function PhysicsCanvas() {
     };
   }, []);
 
-  // Sync Matter.js bodies with Zustand nodes list
+  // Sync Matter.js bodies with Zustand nodes list (including dynamic resizing)
   useEffect(() => {
     const engine = engineRef.current;
     if (!engine) return;
@@ -120,7 +138,7 @@ export function PhysicsCanvas() {
     const currentBodies = bodiesRef.current;
     const nodeIds = new Set(nodes.map((n) => n.id));
 
-    // 1. Add bodies for new nodes
+    // 1. Add bodies for new nodes with dynamic width/height
     nodes.forEach((node) => {
       if (!currentBodies.has(node.id)) {
         const body = createNodeBody(
@@ -128,12 +146,29 @@ export function PhysicsCanvas() {
           node.id,
           node.initialX,
           node.initialY,
-          node.category
+          node.category,
+          node.width,
+          node.height
         );
         currentBodies.set(node.id, body);
       } else {
-        // Update physical properties dynamically if category changed
         const body = currentBodies.get(node.id)!;
+        const anyBody = body as any;
+        
+        // Dynamic scaling: If node dimensions changed in React state, scale the Matter.js body
+        const currentW = anyBody.userData?.width ?? 260;
+        const currentH = anyBody.userData?.height ?? 120;
+        const targetW = node.width ?? 260;
+        const targetH = node.height ?? 120;
+
+        if (currentW !== targetW || currentH !== targetH) {
+          const scaleX = targetW / currentW;
+          const scaleY = targetH / currentH;
+          Matter.Body.scale(body, scaleX, scaleY);
+          anyBody.userData = { width: targetW, height: targetH };
+        }
+
+        // Update physical properties dynamically if category changed
         const config = CATEGORY_PHYSICS[node.category];
         if (config) {
           if (body.mass !== config.mass) {
@@ -336,7 +371,7 @@ export function PhysicsCanvas() {
 
     const { x, y } = screenToWorld(e.clientX, e.clientY);
     const category = 'idea';
-    const config = CATEGORY_PHYSICS[category];
+    const dims = calculateOptimalDimensions('', '', []); // Get dynamic initial dimensions
 
     addNode({
       title: '',
@@ -345,8 +380,8 @@ export function PhysicsCanvas() {
       category: category,
       initialX: x,
       initialY: y,
-      width: config.width,
-      height: config.height,
+      width: dims.width,
+      height: dims.height,
     });
   };
 
@@ -478,9 +513,18 @@ export function PhysicsCanvas() {
           nodes={nodes}
           selectedId={selectedId}
           onSelect={selectNode}
-          onUpdate={(id, title, content, tags) => updateNode(id, { title, content, tags })}
+          onUpdate={(id, title, content, tags, width, height) => 
+            updateNode(id, { title, content, tags, width, height })
+          }
           onDelete={handleRemoveNode} // Trigger particle explosion during delete
-          onChangeCategory={(id, cat) => updateNode(id, { category: cat })}
+          onChangeCategory={(id, cat) => {
+            const node = nodes.find(n => n.id === id);
+            if (node) {
+              // Recalculate dimensions for the new category to ensure fit
+              const dims = calculateOptimalDimensions(node.title, node.content, node.tags);
+              updateNode(id, { category: cat, width: dims.width, height: dims.height });
+            }
+          }}
           onDragStart={handleNodePointerDown}
           onContextMenu={(id, x, y) => setContextMenu({ nodeId: id, x, y })}
           domRefs={domRefs}

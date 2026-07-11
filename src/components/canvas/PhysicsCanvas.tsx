@@ -16,6 +16,7 @@ import { NodeOverlay } from './NodeOverlay';
 import { SVGConnectionLayer } from './SVGConnectionLayer';
 import { HUDPanel } from '../hud/HUDPanel';
 import { UndoToast } from '../hud/UndoToast';
+import { ConnectionLegend } from '../hud/ConnectionLegend';
 import { NodeContextMenu } from '../nodes/NodeContextMenu';
 import { DisintegrationEffect, triggerDisintegration } from '../particles/DisintegrationEffect';
 import { CATEGORY_INFO } from '../nodes/registry';
@@ -504,6 +505,9 @@ export function PhysicsCanvas() {
 
       {/* Settings HUD panel */}
       <HUDPanel />
+
+      {/* Connection telemetry legend */}
+      <ConnectionLegend />
 
       {/* Undo deleted note Toast banner */}
       <UndoToast />

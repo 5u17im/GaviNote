@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { useEffect } from 'react';
 import Matter from 'matter-js';
 import { CATEGORY_PHYSICS } from '../physics/bodies';
 import { calcBezierPath } from '../utils/bezier';
@@ -13,8 +13,6 @@ interface UsePhysicsSyncProps {
 }
 
 export function usePhysicsSync({ engineRef, bodiesRef, domRefs, nodes, connections }: UsePhysicsSyncProps) {
-  const rafRef = useRef<number | null>(null);
-
   useEffect(() => {
     const engine = engineRef.current;
     if (!engine) return;
@@ -61,16 +59,16 @@ export function usePhysicsSync({ engineRef, bodiesRef, domRefs, nodes, connectio
           if (thickEl) thickEl.setAttribute('d', path);
         }
       });
-
-      rafRef.current = requestAnimationFrame(syncPositions);
     };
 
-    rafRef.current = requestAnimationFrame(syncPositions);
+    // Bind sync directly to Matter.js physics engine tick for zero-lag coordinates update
+    Matter.Events.on(engine, 'afterUpdate', syncPositions);
+
+    // Initial sync
+    syncPositions();
 
     return () => {
-      if (rafRef.current) {
-        cancelAnimationFrame(rafRef.current);
-      }
+      Matter.Events.off(engine, 'afterUpdate', syncPositions);
     };
   }, [engineRef, nodes, connections, bodiesRef, domRefs]);
 }

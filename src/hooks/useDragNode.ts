@@ -2,14 +2,14 @@ import React, { useRef } from 'react';
 import Matter from 'matter-js';
 
 interface UseDragNodeProps {
-  engine: Matter.Engine | null;
+  engineRef: React.MutableRefObject<Matter.Engine | null>;
   bodiesRef: React.MutableRefObject<Map<string, Matter.Body>>;
   zoom: number;
   panX: number;
   panY: number;
 }
 
-export function useDragNode({ engine, bodiesRef, zoom, panX, panY }: UseDragNodeProps) {
+export function useDragNode({ engineRef, bodiesRef, zoom, panX, panY }: UseDragNodeProps) {
   const dragInfo = useRef<{
     nodeId: string;
     pointerId: number;
@@ -24,6 +24,7 @@ export function useDragNode({ engine, bodiesRef, zoom, panX, panY }: UseDragNode
   } | null>(null);
 
   const onPointerDown = (e: React.PointerEvent<HTMLDivElement>, nodeId: string) => {
+    const engine = engineRef.current;
     const body = bodiesRef.current.get(nodeId);
     if (!body || !engine) return;
 
@@ -55,6 +56,7 @@ export function useDragNode({ engine, bodiesRef, zoom, panX, panY }: UseDragNode
   };
 
   const onPointerMove = (e: React.PointerEvent<HTMLDivElement>) => {
+    const engine = engineRef.current;
     const info = dragInfo.current;
     if (!info || !engine) return;
 
@@ -98,6 +100,7 @@ export function useDragNode({ engine, bodiesRef, zoom, panX, panY }: UseDragNode
   };
 
   const onPointerUp = (e: React.PointerEvent<HTMLDivElement>) => {
+    const engine = engineRef.current;
     const info = dragInfo.current;
     if (!info || !engine) return;
 

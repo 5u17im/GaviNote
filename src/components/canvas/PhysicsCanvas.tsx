@@ -68,11 +68,6 @@ export function PhysicsCanvas() {
 
   // Spacebar tracking
   const [isSpacePressed, setIsSpacePressed] = useState(false);
-  const [mounted, setMounted] = useState(false);
-
-  useEffect(() => {
-    setMounted(true);
-  }, []);
 
   // Restore state from Local Storage or load demo on mount
   useEffect(() => {
@@ -91,7 +86,7 @@ export function PhysicsCanvas() {
     
     // Fallback: load demo micro-ecosystem
     loadState(INITIAL_DEMO_NODES, INITIAL_DEMO_CONNECTIONS);
-  }, []);
+  }, [loadState]);
 
   // Debounced Auto-save to Local Storage
   useEffect(() => {
@@ -266,7 +261,7 @@ export function PhysicsCanvas() {
 
   // Hook for DOM & SVG coordinates synchronization (Runs RAF loop)
   usePhysicsSync({
-    engine: engineRef.current,
+    engineRef,
     bodiesRef,
     domRefs,
     nodes,
@@ -275,7 +270,7 @@ export function PhysicsCanvas() {
 
   // Hook for magnetic attraction/repulsión between nodes
   useMagneticForces({
-    engine: engineRef.current,
+    engineRef,
     bodiesRef,
     nodes,
     magnetStrength,
@@ -300,7 +295,7 @@ export function PhysicsCanvas() {
 
   // Hook for pointer drag handler
   const dragNode = useDragNode({
-    engine: engineRef.current,
+    engineRef,
     bodiesRef,
     zoom,
     panX,
@@ -400,7 +395,7 @@ export function PhysicsCanvas() {
         if (containerRef.current) {
           containerRef.current.releasePointerCapture(e.pointerId);
         }
-      } catch (err) {}
+      } catch {}
       panDragRef.current.isDragging = false;
     } else if (connDraw.isDrawing) {
       connDraw.endConnection(e);
@@ -431,10 +426,6 @@ export function PhysicsCanvas() {
 
     removeNode(id);
   };
-
-  if (!mounted) {
-    return <div className="w-screen h-screen bg-[#0B0F19]" />;
-  }
 
   const cx = window.innerWidth / 2;
   const cy = window.innerHeight / 2;

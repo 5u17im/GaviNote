@@ -5,17 +5,18 @@ import { calcBezierPath } from '../utils/bezier';
 import type { NodeMeta, Connection } from '../types/node.types';
 
 interface UsePhysicsSyncProps {
-  engine: Matter.Engine | null;
+  engineRef: React.MutableRefObject<Matter.Engine | null>;
   bodiesRef: React.MutableRefObject<Map<string, Matter.Body>>;
   domRefs: React.MutableRefObject<Map<string, HTMLElement>>;
   nodes: NodeMeta[];
   connections: Connection[];
 }
 
-export function usePhysicsSync({ engine, bodiesRef, domRefs, nodes, connections }: UsePhysicsSyncProps) {
+export function usePhysicsSync({ engineRef, bodiesRef, domRefs, nodes, connections }: UsePhysicsSyncProps) {
   const rafRef = useRef<number | null>(null);
 
   useEffect(() => {
+    const engine = engineRef.current;
     if (!engine) return;
 
     const syncPositions = () => {
@@ -71,5 +72,5 @@ export function usePhysicsSync({ engine, bodiesRef, domRefs, nodes, connections 
         cancelAnimationFrame(rafRef.current);
       }
     };
-  }, [engine, nodes, connections, bodiesRef, domRefs]);
+  }, [engineRef, nodes, connections, bodiesRef, domRefs]);
 }

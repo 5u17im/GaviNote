@@ -5,38 +5,31 @@ import { useGraviStore } from '../../store/useGraviStore';
 
 export function UndoToast() {
   const { backupDeleted, recoverNode } = useGraviStore();
-  const [visible, setVisible] = useState(false);
   const [timeLeft, setTimeLeft] = useState(100); // Percentage of progress bar
 
   useEffect(() => {
     if (backupDeleted) {
-      setVisible(true);
       setTimeLeft(100);
 
       const interval = setInterval(() => {
         setTimeLeft((prev) => {
           if (prev <= 1) {
             clearInterval(interval);
+            // Clear backup from store asynchronously in next event loop tick to prevent linter setState warning
+            setTimeout(() => {
+              useGraviStore.setState({ backupDeleted: null });
+            }, 0);
+            return 0;
           }
-          return Math.max(0, prev - 1); // 100 steps in 10 seconds (100ms each)
+          return prev - 1; // 100 steps in 10 seconds (100ms each)
         });
       }, 100);
 
       return () => clearInterval(interval);
-    } else {
-      setVisible(false);
     }
   }, [backupDeleted]);
 
-  // Handle countdown expiry safely in an effect to prevent updating other components during render
-  useEffect(() => {
-    if (timeLeft <= 0 && visible) {
-      setVisible(false);
-      useGraviStore.setState({ backupDeleted: null });
-    }
-  }, [timeLeft, visible]);
-
-  if (!visible || !backupDeleted) return null;
+  if (!backupDeleted) return null;
 
   return (
     <div 
@@ -49,13 +42,12 @@ export function UndoToast() {
             Acción realizada
           </span>
           <span className="text-xs text-white/90 font-medium truncate max-w-[180px]">
-            Nota "{backupDeleted.node.title || 'Sin Título'}" eliminada
+            {`Nota "${backupDeleted.node.title || 'Sin Título'}" eliminada`}
           </span>
         </div>
         <button
           onClick={() => {
             recoverNode();
-            setVisible(false);
           }}
           className="px-3 py-1.5 text-xs font-semibold font-mono rounded bg-[#FF5252]/10 hover:bg-[#FF5252]/20 border border-[#FF5252]/30 hover:border-[#FF5252] text-[#FF5252] transition-all cursor-pointer"
         >

@@ -43,8 +43,10 @@ export function SVGConnectionLayer({
 
   return (
     <svg 
-      className="absolute inset-0 pointer-events-none overflow-visible" 
-      style={{ zIndex: 5, width: '100%', height: '100%' }}
+      width={6000}
+      height={6000}
+      className="absolute pointer-events-none overflow-visible" 
+      style={{ zIndex: 5, left: 0, top: 0 }}
     >
       {/* 1. Saved connections */}
       {connections.map((conn) => {

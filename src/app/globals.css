@@ -69,30 +69,29 @@ body {
   background: rgba(255, 255, 255, 0.2);
 }
 
-/* Futuristic custom sliders */
+/* Tactical custom sliders */
 input[type="range"].hud-slider {
   -webkit-appearance: none;
   appearance: none;
-  background: rgba(255, 255, 255, 0.05);
-  height: 6px;
-  border-radius: 9999px;
+  background: #222733;
+  height: 4px;
+  border-radius: 0px;
   outline: none;
-  border: 1px solid rgba(255, 255, 255, 0.03);
 }
 
 input[type="range"].hud-slider::-webkit-slider-thumb {
   -webkit-appearance: none;
   appearance: none;
-  width: 14px;
+  width: 6px;
   height: 14px;
-  border-radius: 50%;
-  background: #00E5FF;
-  box-shadow: 0 0 10px #00E5FF, 0 0 4px #00E5FF;
+  border-radius: 1px;
+  background: #E2E8F0;
+  box-shadow: none;
   cursor: pointer;
-  transition: transform 0.1s ease, box-shadow 0.1s ease;
+  transition: background 0.1s ease;
 }
 
 input[type="range"].hud-slider::-webkit-slider-thumb:hover {
-  transform: scale(1.2);
-  box-shadow: 0 0 14px #00E5FF, 0 0 8px #00E5FF;
+  transform: none;
+  background: #ffffff;
 }

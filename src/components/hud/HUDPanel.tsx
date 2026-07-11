@@ -111,7 +111,7 @@ export function HUDPanel() {
         <button
           onClick={handleQuickAdd}
           title="Crear Nota al Centro"
-          className="p-3 rounded-xl border border-white/[0.08] bg-[#0A0D1B]/85 hover:bg-white/[0.08] hover:border-white/20 text-white transition-all shadow-[0_4px_20px_rgba(0,0,0,0.4)] hover:scale-105 active:scale-95 flex items-center justify-center cursor-pointer backdrop-blur-md"
+          className="p-3 rounded-md border border-[#222733] bg-[#0D0F17]/95 hover:bg-[#161A26] hover:border-white/10 text-white transition-all shadow-xl hover:scale-105 active:scale-95 flex items-center justify-center cursor-pointer backdrop-blur-md"
         >
           <Plus size={16} />
         </button>
@@ -120,7 +120,7 @@ export function HUDPanel() {
         <button
           onClick={handleZoomFit}
           title="Centrar Cámara"
-          className="p-3 rounded-xl border border-white/[0.08] bg-[#0A0D1B]/85 hover:bg-white/[0.08] hover:border-white/20 text-white transition-all shadow-[0_4px_20px_rgba(0,0,0,0.4)] hover:scale-105 active:scale-95 flex items-center justify-center cursor-pointer backdrop-blur-md"
+          className="p-3 rounded-md border border-[#222733] bg-[#0D0F17]/95 hover:bg-[#161A26] hover:border-white/10 text-white transition-all shadow-xl hover:scale-105 active:scale-95 flex items-center justify-center cursor-pointer backdrop-blur-md"
         >
           <Maximize2 size={16} />
         </button>
@@ -129,10 +129,10 @@ export function HUDPanel() {
         <button
           onClick={() => setIsOpen(!isOpen)}
           title="Configuración de Física y Guardado"
-          className={`p-3 rounded-xl border transition-all shadow-[0_4px_20px_rgba(0,0,0,0.4)] hover:scale-105 active:scale-95 flex items-center justify-center cursor-pointer backdrop-blur-md ${
+          className={`p-3 rounded-md border transition-all shadow-xl hover:scale-105 active:scale-95 flex items-center justify-center cursor-pointer backdrop-blur-md ${
             isOpen 
-              ? 'bg-[#00E5FF]/20 border-[#00E5FF] text-[#00E5FF] shadow-[0_0_15px_rgba(0,229,255,0.25)]' 
-              : 'border-white/[0.08] bg-[#0A0D1B]/85 hover:bg-white/[0.08] hover:border-white/20 text-white'
+              ? 'bg-[#161A26] border-[#00E5FF]/40 text-[#00E5FF]' 
+              : 'border-[#222733] bg-[#0D0F17]/95 hover:bg-[#161A26] hover:border-white/10 text-white'
           }`}
         >
           <Settings size={16} className={isOpen ? 'animate-spin-slow' : ''} />
@@ -142,7 +142,7 @@ export function HUDPanel() {
         <button
           onClick={() => setShowHelp(true)}
           title="Ver Atajos y Guía"
-          className="p-3 rounded-xl border border-white/[0.08] bg-[#0A0D1B]/85 hover:bg-white/[0.08] hover:border-white/20 text-white/70 hover:text-white transition-all shadow-[0_4px_20px_rgba(0,0,0,0.4)] hover:scale-105 active:scale-95 flex items-center justify-center cursor-pointer backdrop-blur-md"
+          className="p-3 rounded-md border border-[#222733] bg-[#0D0F17]/95 hover:bg-[#161A26] hover:border-white/10 text-white/70 hover:text-white transition-all shadow-xl hover:scale-105 active:scale-95 flex items-center justify-center cursor-pointer backdrop-blur-md"
         >
           <HelpCircle size={16} />
         </button>
@@ -151,31 +151,31 @@ export function HUDPanel() {
       {/* 2. Settings Sidebar Panel */}
       {isOpen && (
         <div 
-          className="absolute top-24 right-6 z-40 w-80 rounded-2xl border border-white/[0.08] bg-[#070913]/92 p-5 shadow-[0_20px_50px_rgba(0,229,255,0.05),0_8px_32px_rgba(0,0,0,0.5)] backdrop-blur-2xl flex flex-col gap-4.5 animate-in slide-in-from-top-4 duration-200 pointer-events-auto"
+          className="absolute top-24 right-6 z-40 w-80 rounded-md border border-[#222733] bg-[#0D0F17]/95 p-5 shadow-2xl shadow-black/80 backdrop-blur-md flex flex-col gap-4.5 animate-in slide-in-from-top-4 duration-200 pointer-events-auto"
           style={{ maxHeight: 'calc(100vh - 120px)', overflowY: 'auto' }}
         >
           {/* Header */}
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <Sliders size={14} className="text-[#00E5FF] animate-pulse" />
+              <Sliders size={14} className="text-neutral-400" />
               <span className="font-mono text-[10px] uppercase tracking-widest font-bold text-white/90">
-                Panel de Telemetría
+                TELEMETRÍA FÍSICA
               </span>
             </div>
-            <button onClick={() => setIsOpen(false)} className="text-white/40 hover:text-white transition-colors cursor-pointer p-1 hover:bg-white/5 rounded-lg">
+            <button onClick={() => setIsOpen(false)} className="text-white/40 hover:text-white transition-colors cursor-pointer p-1 hover:bg-white/5 rounded-md">
               <X size={14} />
             </button>
           </div>
 
-          <div className="h-px bg-white/[0.04]" />
+          <div className="h-px bg-[#222733]" />
 
           {/* Sliders */}
           <div className="flex flex-col gap-4">
             {/* Gravity */}
             <div className="flex flex-col gap-1">
               <div className="flex items-center justify-between text-[11px] font-mono">
-                <span className="text-white/50">// Gravedad</span>
-                <span className="text-[#00E5FF] bg-[#00E5FF]/10 px-1.5 py-0.5 rounded border border-[#00E5FF]/20 font-bold">
+                <span className="text-neutral-500">// Gravedad</span>
+                <span className="text-neutral-300 font-bold">
                   {gravity.toFixed(2)} G
                 </span>
               </div>
@@ -188,14 +188,14 @@ export function HUDPanel() {
                 onChange={(e) => setGravity(parseFloat(e.target.value))}
                 className="w-full hud-slider mt-1.5 cursor-pointer"
               />
-              <span className="text-[9px] text-white/30 font-mono italic mt-0.5">0.00 (Espacio) - 1.00 (Tierra)</span>
+              <span className="text-[9px] text-neutral-600 font-mono italic mt-0.5">0.00 (Espacio) - 1.00 (Tierra)</span>
             </div>
 
             {/* Friction */}
             <div className="flex flex-col gap-1">
               <div className="flex items-center justify-between text-[11px] font-mono">
-                <span className="text-white/50">// Fricción de Aire</span>
-                <span className="text-[#00E5FF] bg-[#00E5FF]/10 px-1.5 py-0.5 rounded border border-[#00E5FF]/20 font-bold">
+                <span className="text-neutral-500">// Fricción de Aire</span>
+                <span className="text-neutral-300 font-bold">
                   {(airFriction * 1000).toFixed(0)} ms
                 </span>
               </div>
@@ -208,14 +208,14 @@ export function HUDPanel() {
                 onChange={(e) => setAirFriction(parseFloat(e.target.value))}
                 className="w-full hud-slider mt-1.5 cursor-pointer"
               />
-              <span className="text-[9px] text-white/30 font-mono italic mt-0.5">Menor fricción = mayor inercia de planeo</span>
+              <span className="text-[9px] text-neutral-600 font-mono italic mt-0.5">Menor fricción = mayor inercia</span>
             </div>
 
             {/* Magnetic Strength */}
             <div className="flex flex-col gap-1">
               <div className="flex items-center justify-between text-[11px] font-mono">
-                <span className="text-white/50">// Fuerza Magnética</span>
-                <span className="text-[#00E5FF] bg-[#00E5FF]/10 px-1.5 py-0.5 rounded border border-[#00E5FF]/20 font-bold">
+                <span className="text-neutral-500">// Fuerza Magnética</span>
+                <span className="text-neutral-300 font-bold">
                   {magnetStrength.toFixed(1)}x
                 </span>
               </div>
@@ -228,35 +228,13 @@ export function HUDPanel() {
                 onChange={(e) => setMagnetStrength(parseFloat(e.target.value))}
                 className="w-full hud-slider mt-1.5 cursor-pointer"
               />
-              <span className="text-[9px] text-white/30 font-mono italic mt-0.5">Atracción por tags / Repulsión de colisión</span>
+              <span className="text-[9px] text-neutral-600 font-mono italic mt-0.5">Atracción por tags / Repulsión de colisión</span>
             </div>
           </div>
 
-          <div className="h-px bg-white/[0.04] my-0.5" />
+          <div className="h-px bg-[#222733] my-0.5" />
 
-          {/* Trigger commands */}
-          <div className="flex flex-col gap-2">
-            <button
-              onClick={handleBigBang}
-              className="w-full py-2.5 rounded-xl border border-amber-500/20 bg-amber-500/[0.04] hover:bg-amber-500/15 hover:border-amber-400 text-amber-300 text-[11px] font-bold font-mono flex items-center justify-center gap-2 transition-all cursor-pointer hover:shadow-[0_0_15px_rgba(245,158,11,0.15)] group"
-            >
-              <Sparkles size={13} className="text-amber-400 group-hover:scale-110 transition-transform" />
-              Explosión Big Bang
-            </button>
-            
-            <button
-              onClick={handleClearCanvas}
-              disabled={nodes.length === 0}
-              className="w-full py-2.5 rounded-xl border border-red-500/20 bg-red-500/[0.04] hover:bg-red-500/15 hover:border-red-400 text-red-300 text-[11px] font-bold font-mono flex items-center justify-center gap-2 transition-all disabled:opacity-30 disabled:pointer-events-none cursor-pointer hover:shadow-[0_0_15px_rgba(239,68,68,0.15)] group"
-            >
-              <Trash2 size={13} className="text-red-400 group-hover:scale-110 transition-transform" />
-              Limpiar Lienzo
-            </button>
-          </div>
-
-          <div className="h-px bg-white/[0.04] my-0.5" />
-
-          {/* Serialization */}
+          {/* Combined compact actions grid */}
           <div className="flex flex-col gap-2">
             <input
               type="file"
@@ -266,109 +244,126 @@ export function HUDPanel() {
               className="hidden"
             />
             
-            <div className="grid grid-cols-2 gap-2">
+            <div className="grid grid-cols-2 gap-px bg-[#222733] border border-[#222733] rounded-sm overflow-hidden">
+              <button
+                onClick={handleBigBang}
+                className="bg-[#0D0F17] hover:bg-[#161A26] font-mono text-xs text-neutral-300 py-2.5 cursor-pointer flex items-center justify-center gap-1.5 border-0"
+              >
+                <Sparkles size={12} className="text-amber-500" />
+                Big Bang
+              </button>
+              
+              <button
+                onClick={handleClearCanvas}
+                disabled={nodes.length === 0}
+                className="bg-[#0D0F17] hover:bg-[#161A26] font-mono text-xs text-neutral-300 py-2.5 cursor-pointer flex items-center justify-center gap-1.5 border-0 disabled:opacity-30 disabled:pointer-events-none"
+              >
+                <Trash2 size={12} className="text-red-500" />
+                Limpiar
+              </button>
+              
               <button
                 onClick={handleImportClick}
-                className="py-2 rounded-xl border border-white/[0.06] bg-white/[0.03] hover:bg-white/[0.08] hover:border-white/20 text-white/90 hover:text-white text-[11px] font-semibold font-mono flex items-center justify-center gap-1.5 transition-all cursor-pointer"
+                className="bg-[#0D0F17] hover:bg-[#161A26] font-mono text-xs text-neutral-300 py-2.5 cursor-pointer flex items-center justify-center gap-1.5 border-0"
               >
-                <Upload size={12} className="text-white/40" />
+                <Upload size={12} className="text-neutral-500" />
                 Importar
               </button>
               
               <button
                 onClick={handleExportJSON}
-                className="py-2 rounded-xl border border-white/[0.06] bg-white/[0.03] hover:bg-white/[0.08] hover:border-white/20 text-white/90 hover:text-white text-[11px] font-semibold font-mono flex items-center justify-center gap-1.5 transition-all cursor-pointer"
+                className="bg-[#0D0F17] hover:bg-[#161A26] font-mono text-xs text-neutral-300 py-2.5 cursor-pointer flex items-center justify-center gap-1.5 border-0"
               >
-                <Download size={12} className="text-white/40" />
+                <Download size={12} className="text-neutral-500" />
                 Exportar
               </button>
-            </div>
 
-            <button
-              onClick={handleExportPNG}
-              className="w-full py-2.5 rounded-xl border border-white/[0.06] bg-white/[0.03] hover:bg-white/[0.08] hover:border-white/20 text-white/90 hover:text-white text-[11px] font-semibold font-mono flex items-center justify-center gap-1.5 transition-all cursor-pointer"
-            >
-              <Image size={12} className="text-white/40" />
-              Exportar Imagen
-            </button>
+              <button
+                onClick={handleExportPNG}
+                className="col-span-2 bg-[#0D0F17] hover:bg-[#161A26] font-mono text-xs text-neutral-300 py-2.5 cursor-pointer flex items-center justify-center gap-1.5 border-0 border-t border-[#222733]"
+              >
+                <Image size={12} className="text-neutral-500" />
+                Exportar Imagen
+              </button>
+            </div>
           </div>
         </div>
       )}
 
       {/* 3. Help Modal Overlay */}
       {showHelp && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 backdrop-blur-md pointer-events-auto animate-in fade-in duration-200">
-          <div className="w-[460px] max-w-full rounded-2xl border border-white/[0.08] bg-[#070913]/96 p-6 shadow-[0_24px_60px_rgba(0,0,0,0.8)] flex flex-col gap-4 animate-in zoom-in-95 duration-200">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 backdrop-blur-sm pointer-events-auto animate-in fade-in duration-200">
+          <div className="w-[460px] max-w-full rounded-md border border-[#222733] bg-[#0D0F17]/96 p-6 shadow-2xl shadow-black/80 flex flex-col gap-4 animate-in zoom-in-95 duration-200">
             {/* Header */}
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
-                <Info size={16} className="text-[#00E5FF] animate-pulse" />
+                <Info size={16} className="text-neutral-400" />
                 <h2 className="font-mono text-xs uppercase tracking-widest font-bold text-white">
-                  Manual de Pilotaje (Atajos)
+                  TELEMETRÍA DE PILOTAJE
                 </h2>
               </div>
-              <button onClick={() => setShowHelp(false)} className="text-white/40 hover:text-white transition-colors cursor-pointer p-1 hover:bg-white/5 rounded-lg">
+              <button onClick={() => setShowHelp(false)} className="text-white/40 hover:text-white transition-colors cursor-pointer p-1 hover:bg-white/5 rounded-md">
                 <X size={16} />
               </button>
             </div>
 
-            <div className="h-px bg-white/[0.04]" />
+            <div className="h-px bg-[#222733]" />
 
             {/* Instruction table */}
-            <div className="flex flex-col gap-2.5 text-[11px] font-sans text-white/80">
-              <div className="flex justify-between items-center py-2 border-b border-white/[0.03] hover:bg-white/[0.01] px-1 rounded transition-colors">
-                <span className="font-semibold text-white/90">Crear Nota</span>
-                <span className="font-mono bg-white/[0.05] border border-white/[0.05] text-[#00E5FF] px-2 py-0.5 rounded text-[10px]">
+            <div className="flex flex-col gap-2.5 text-[11px] font-sans text-neutral-400">
+              <div className="flex justify-between items-center py-2 border-b border-[#222733] hover:bg-white/[0.01] px-1 transition-colors">
+                <span className="font-sans text-neutral-400">Crear Nota</span>
+                <kbd className="font-mono text-xs text-neutral-200 bg-neutral-900 px-2 py-0.5 rounded border border-neutral-700 border-b-2 shadow-sm">
                   Doble Clic (Vacío)
-                </span>
+                </kbd>
               </div>
-              <div className="flex justify-between items-center py-2 border-b border-white/[0.03] hover:bg-white/[0.01] px-1 rounded transition-colors">
-                <span className="font-semibold text-white/90">Editar Nota</span>
-                <span className="font-mono bg-white/[0.05] border border-white/[0.05] text-[#00E5FF] px-2 py-0.5 rounded text-[10px]">
+              <div className="flex justify-between items-center py-2 border-b border-[#222733] hover:bg-white/[0.01] px-1 transition-colors">
+                <span className="font-sans text-neutral-400">Editar Nota</span>
+                <kbd className="font-mono text-xs text-neutral-200 bg-neutral-900 px-2 py-0.5 rounded border border-neutral-700 border-b-2 shadow-sm">
                   Doble Clic (Nota)
-                </span>
+                </kbd>
               </div>
-              <div className="flex justify-between items-center py-2 border-b border-white/[0.03] hover:bg-white/[0.01] px-1 rounded transition-colors">
-                <span className="font-semibold text-white/90">Guardar Edición</span>
-                <span className="font-mono bg-white/[0.05] border border-white/[0.05] text-[#00E5FF] px-2 py-0.5 rounded text-[10px]">
+              <div className="flex justify-between items-center py-2 border-b border-[#222733] hover:bg-white/[0.01] px-1 transition-colors">
+                <span className="font-sans text-neutral-400">Guardar Edición</span>
+                <kbd className="font-mono text-xs text-neutral-200 bg-neutral-900 px-2 py-0.5 rounded border border-neutral-700 border-b-2 shadow-sm">
                   Ctrl + Enter
-                </span>
+                </kbd>
               </div>
-              <div className="flex justify-between items-center py-2 border-b border-white/[0.03] hover:bg-white/[0.01] px-1 rounded transition-colors">
-                <span className="font-semibold text-white/90">Conectar Notas</span>
-                <span className="font-mono bg-white/[0.05] border border-white/[0.05] text-[#00E5FF] px-2 py-0.5 rounded text-[10px]">
+              <div className="flex justify-between items-center py-2 border-b border-[#222733] hover:bg-white/[0.01] px-1 transition-colors">
+                <span className="font-sans text-neutral-400">Conectar Notas</span>
+                <kbd className="font-mono text-xs text-neutral-200 bg-neutral-900 px-2 py-0.5 rounded border border-neutral-700 border-b-2 shadow-sm">
                   Shift + Arrastrar
-                </span>
+                </kbd>
               </div>
-              <div className="flex justify-between items-center py-2 border-b border-white/[0.03] hover:bg-white/[0.01] px-1 rounded transition-colors">
-                <span className="font-semibold text-white/90">Rotar Tipo Conexión</span>
-                <span className="font-mono bg-white/[0.05] border border-white/[0.05] text-[#00E5FF] px-2 py-0.5 rounded text-[10px]">
+              <div className="flex justify-between items-center py-2 border-b border-[#222733] hover:bg-white/[0.01] px-1 transition-colors">
+                <span className="font-sans text-neutral-400">Rotar Tipo Conexión</span>
+                <kbd className="font-mono text-xs text-neutral-200 bg-neutral-900 px-2 py-0.5 rounded border border-neutral-700 border-b-2 shadow-sm">
                   Clic en el Hilo
-                </span>
+                </kbd>
               </div>
-              <div className="flex justify-between items-center py-2 border-b border-white/[0.03] hover:bg-white/[0.01] px-1 rounded transition-colors">
-                <span className="font-semibold text-white/90">Desplazar Cámara</span>
-                <span className="font-mono bg-white/[0.05] border border-white/[0.05] text-[#00E5FF] px-2 py-0.5 rounded text-[10px]">
+              <div className="flex justify-between items-center py-2 border-b border-[#222733] hover:bg-white/[0.01] px-1 transition-colors">
+                <span className="font-sans text-neutral-400">Desplazar Cámara</span>
+                <kbd className="font-mono text-xs text-neutral-200 bg-neutral-900 px-2 py-0.5 rounded border border-neutral-700 border-b-2 shadow-sm">
                   Espacio + Arrastrar
-                </span>
+                </kbd>
               </div>
-              <div className="flex justify-between items-center py-2 border-b border-white/[0.03] hover:bg-white/[0.01] px-1 rounded transition-colors">
-                <span className="font-semibold text-white/90">Zoom Lienzo</span>
-                <span className="font-mono bg-white/[0.05] border border-white/[0.05] text-[#00E5FF] px-2 py-0.5 rounded text-[10px]">
+              <div className="flex justify-between items-center py-2 border-b border-[#222733] hover:bg-white/[0.01] px-1 transition-colors">
+                <span className="font-sans text-neutral-400">Zoom Lienzo</span>
+                <kbd className="font-mono text-xs text-neutral-200 bg-neutral-900 px-2 py-0.5 rounded border border-neutral-700 border-b-2 shadow-sm">
                   Rueda del Mouse
-                </span>
+                </kbd>
               </div>
-              <div className="flex justify-between items-center py-2 border-b border-white/[0.03] hover:bg-white/[0.01] px-1 rounded transition-colors">
-                <span className="font-semibold text-white/90">Menú de Opciones</span>
-                <span className="font-mono bg-white/[0.05] border border-white/[0.05] text-[#00E5FF] px-2 py-0.5 rounded text-[10px]">
+              <div className="flex justify-between items-center py-2 border-b border-[#222733] hover:bg-white/[0.01] px-1 transition-colors">
+                <span className="font-sans text-neutral-400">Menú de Opciones</span>
+                <kbd className="font-mono text-xs text-neutral-200 bg-neutral-900 px-2 py-0.5 rounded border border-neutral-700 border-b-2 shadow-sm">
                   Clic Derecho (Nota)
-                </span>
+                </kbd>
               </div>
             </div>
 
-            <div className="h-px bg-white/[0.04] mt-1" />
+            <div className="h-px bg-[#222733] mt-1" />
 
-            <div className="text-[10px] text-white/40 text-center font-mono uppercase tracking-wider">
+            <div className="text-[10px] text-neutral-600 text-center font-mono uppercase tracking-wider">
               GraviNote por Nothing Sense · v1.0.0
             </div>
           </div>

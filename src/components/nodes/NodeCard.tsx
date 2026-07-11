@@ -99,7 +99,7 @@ export function NodeCard({
           />
         </div>
       ) : (
-        <div className="w-full h-full p-3.5 bg-[#0D0F17]/80 rounded-[3px] border border-white/5 flex flex-col justify-between pointer-events-none overflow-hidden">
+        <div className="w-full h-full py-2.5 px-3 bg-[#0D0F17]/80 rounded-[3px] border border-white/5 flex flex-col justify-between pointer-events-none overflow-hidden">
           {/* Header */}
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-1.5">
@@ -120,18 +120,18 @@ export function NodeCard({
           </div>
 
           {/* Title */}
-          <h3 className="font-serif text-xs font-semibold text-white/95 mt-1 truncate">
+          <h3 className="font-serif text-xs font-semibold text-white/95 mt-1 truncate pr-1">
             {node.title || 'Sin Título'}
           </h3>
 
           {/* Content preview */}
-          <p className="font-sans text-[11px] text-white/70 line-clamp-2 mt-1 grow overflow-hidden leading-relaxed">
+          <p className="font-sans text-[10.5px] text-white/70 line-clamp-2 mt-1 max-h-[32px] overflow-hidden leading-normal">
             {node.content || 'Sin contenido. Haz doble clic para editar.'}
           </p>
 
           {/* Tags footer */}
           {node.tags.length > 0 && (
-            <div className="flex gap-1 mt-1.5 flex-wrap max-h-[16px] overflow-hidden">
+            <div className="flex gap-1 mt-1 flex-wrap max-h-[14px] overflow-hidden">
               {node.tags.map((tag) => (
                 <span
                   key={tag}

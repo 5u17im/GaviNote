@@ -21,7 +21,8 @@ Todos los cambios notables en este proyecto serán documentados en este archivo.
 - **Persistencia Local:** Auto-guardado en localStorage con debounce de 500ms y toast de recuperación (deshacer borrado) con contador visual de 10 segundos.
 
 ### Corregido
-- **Aviso de Hidratación:** Corrección de Hydration Mismatch en Next.js mediante el uso del hook `mounted` en el lienzo de física, evitando discrepancias de coordenadas de pantalla del lado del servidor.
+- **Aviso de Hidratación (SSR):** Solucionado de raíz el error de Hydration Mismatch en Next.js App Router mediante la carga dinámica de `PhysicsCanvas` (`dynamic` import con `ssr: false`) en `page.tsx`, convirtiendo la vista raíz en un Client Component.
+- **Linter de React (Acceso a Refs):** Solucionados los errores de compilación `Cannot access refs during render` al refactorizar las llamadas de los hooks `usePhysicsSync`, `useMagneticForces` y `useDragNode` para pasar la referencia mutable `engineRef` directamente, evaluando `.current` únicamente en callbacks y efectos.
 - **Prefijos CSS:** Corrección del orden de las directivas `-webkit-backdrop-filter` y `backdrop-filter` en la hoja de estilos de glassmorphism.
 
 ---

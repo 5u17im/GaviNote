@@ -24,6 +24,9 @@ Todos los cambios notables en este proyecto serán documentados en este archivo.
 - **Aviso de Hidratación (SSR):** Solucionado de raíz el error de Hydration Mismatch en Next.js App Router mediante la carga dinámica de `PhysicsCanvas` (`dynamic` import con `ssr: false`) en `page.tsx`, convirtiendo la vista raíz en un Client Component.
 - **Linter de React (Acceso a Refs):** Solucionados los errores de compilación `Cannot access refs during render` al refactorizar las llamadas de los hooks `usePhysicsSync`, `useMagneticForces` y `useDragNode` para pasar la referencia mutable `engineRef` directamente, evaluando `.current` únicamente en callbacks y efectos.
 - **Prefijos CSS:** Corrección del orden de las directivas `-webkit-backdrop-filter` y `backdrop-filter` en la hoja de estilos de glassmorphism.
+- **Gestos Interactivos de Nodos:** Corrección de conflictos de pointer capture implementando un umbral de arrastre de `4px` en `useDragNode.ts`, permitiendo procesar de manera nativa y sin interferencias los eventos de click, doble click (editar) y right-click (menú contextual).
+- **Ruteo de Conexiones SVG:** Ruteo unificado de puntero en el visor para permitir el dibujado y enlace de resortes SVG con `Shift + Drag` cuando el foco está capturado por una tarjeta de nodo.
+- **Menú Contextual:** Elevación de las coordenadas del menú contextual a la raíz del visor en `PhysicsCanvas.tsx` en espacio de pantalla (screen-space), previniendo desvíos por zoom y paneo de cámara.
 
 ---
 

@@ -87,17 +87,19 @@ export function NodeCard({
       }}
       onContextMenu={handleContextMenu}
       onDoubleClick={handleDoubleClick}
-      className="glass-card flex flex-col p-4 rounded-xl select-none z-10 hover:border-white/20 transition-colors pointer-events-auto"
+      className="glass-card p-[3px] rounded-md select-none z-10 hover:border-white/20 transition-colors pointer-events-auto flex flex-col"
     >
       {isEditing ? (
-        <NodeEditor
-          node={node}
-          color={info.color}
-          onSave={handleSave}
-          onCancel={() => setIsEditing(false)}
-        />
+        <div className="w-full h-full p-3 bg-[#0D0F17]/95 rounded-[3px] border border-white/5 flex flex-col">
+          <NodeEditor
+            node={node}
+            color={info.color}
+            onSave={handleSave}
+            onCancel={() => setIsEditing(false)}
+          />
+        </div>
       ) : (
-        <div className="flex flex-col h-full justify-between pointer-events-none">
+        <div className="w-full h-full p-3.5 bg-[#0D0F17]/80 rounded-[3px] border border-white/5 flex flex-col justify-between pointer-events-none overflow-hidden">
           {/* Header */}
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-1.5">
@@ -118,22 +120,22 @@ export function NodeCard({
           </div>
 
           {/* Title */}
-          <h3 className="font-serif text-sm font-semibold text-white/95 mt-1.5 truncate">
+          <h3 className="font-serif text-xs font-semibold text-white/95 mt-1 truncate">
             {node.title || 'Sin Título'}
           </h3>
 
           {/* Content preview */}
-          <p className="font-sans text-xs text-white/70 line-clamp-2 mt-1 grow overflow-hidden leading-relaxed">
+          <p className="font-sans text-[11px] text-white/70 line-clamp-2 mt-1 grow overflow-hidden leading-relaxed">
             {node.content || 'Sin contenido. Haz doble clic para editar.'}
           </p>
 
           {/* Tags footer */}
           {node.tags.length > 0 && (
-            <div className="flex gap-1.5 mt-2 flex-wrap max-h-[20px] overflow-hidden">
+            <div className="flex gap-1 mt-1.5 flex-wrap max-h-[16px] overflow-hidden">
               {node.tags.map((tag) => (
                 <span
                   key={tag}
-                  className="text-[9px] font-mono font-medium px-1.5 py-0.5 rounded"
+                  className="text-[8px] font-mono font-medium px-1 py-0.2 rounded-sm"
                   style={{
                     color: info.color,
                     backgroundColor: `${info.color}15`,

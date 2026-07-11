@@ -293,7 +293,7 @@ export function HUDPanel() {
       {/* 3. Help Modal Overlay */}
       {showHelp && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 backdrop-blur-sm pointer-events-auto animate-in fade-in duration-200">
-          <div className="w-[460px] max-w-full rounded-md border border-[#222733] bg-[#0D0F17]/96 p-6 shadow-2xl shadow-black/80 flex flex-col gap-4 animate-in zoom-in-95 duration-200">
+          <div className="w-[460px] max-w-full rounded-md border border-[#222733] bg-[#0D0F17]/96 px-6 py-4 shadow-2xl shadow-black/80 flex flex-col gap-4 animate-in zoom-in-95 duration-200">
             {/* Header */}
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
@@ -310,60 +310,58 @@ export function HUDPanel() {
             <div className="h-px bg-[#222733]" />
 
             {/* Instruction table */}
-            <div className="flex flex-col gap-2.5 text-[11px] font-sans text-neutral-400">
-              <div className="flex justify-between items-center py-2 border-b border-[#222733] hover:bg-white/[0.01] px-1 transition-colors">
+            <div className="flex flex-col text-neutral-400">
+              <div className="flex items-center justify-between py-3 px-2 border-b border-neutral-800/80 text-xs text-neutral-300">
                 <span className="font-sans text-neutral-400">Crear Nota</span>
-                <kbd className="font-mono text-xs text-neutral-200 bg-neutral-900 px-2 py-0.5 rounded border border-neutral-700 border-b-2 shadow-sm">
+                <kbd className="px-2 py-1 bg-neutral-900 border border-neutral-700/80 rounded text-[11px] font-mono text-neutral-200 shadow-sm">
                   Doble Clic (Vacío)
                 </kbd>
               </div>
-              <div className="flex justify-between items-center py-2 border-b border-[#222733] hover:bg-white/[0.01] px-1 transition-colors">
+              <div className="flex items-center justify-between py-3 px-2 border-b border-neutral-800/80 text-xs text-neutral-300">
                 <span className="font-sans text-neutral-400">Editar Nota</span>
-                <kbd className="font-mono text-xs text-neutral-200 bg-neutral-900 px-2 py-0.5 rounded border border-neutral-700 border-b-2 shadow-sm">
+                <kbd className="px-2 py-1 bg-neutral-900 border border-neutral-700/80 rounded text-[11px] font-mono text-neutral-200 shadow-sm">
                   Doble Clic (Nota)
                 </kbd>
               </div>
-              <div className="flex justify-between items-center py-2 border-b border-[#222733] hover:bg-white/[0.01] px-1 transition-colors">
+              <div className="flex items-center justify-between py-3 px-2 border-b border-neutral-800/80 text-xs text-neutral-300">
                 <span className="font-sans text-neutral-400">Guardar Edición</span>
-                <kbd className="font-mono text-xs text-neutral-200 bg-neutral-900 px-2 py-0.5 rounded border border-neutral-700 border-b-2 shadow-sm">
+                <kbd className="px-2 py-1 bg-neutral-900 border border-neutral-700/80 rounded text-[11px] font-mono text-neutral-200 shadow-sm">
                   Ctrl + Enter
                 </kbd>
               </div>
-              <div className="flex justify-between items-center py-2 border-b border-[#222733] hover:bg-white/[0.01] px-1 transition-colors">
+              <div className="flex items-center justify-between py-3 px-2 border-b border-neutral-800/80 text-xs text-neutral-300">
                 <span className="font-sans text-neutral-400">Conectar Notas</span>
-                <kbd className="font-mono text-xs text-neutral-200 bg-neutral-900 px-2 py-0.5 rounded border border-neutral-700 border-b-2 shadow-sm">
+                <kbd className="px-2 py-1 bg-neutral-900 border border-neutral-700/80 rounded text-[11px] font-mono text-neutral-200 shadow-sm">
                   Shift + Arrastrar
                 </kbd>
               </div>
-              <div className="flex justify-between items-center py-2 border-b border-[#222733] hover:bg-white/[0.01] px-1 transition-colors">
+              <div className="flex items-center justify-between py-3 px-2 border-b border-neutral-800/80 text-xs text-neutral-300">
                 <span className="font-sans text-neutral-400">Rotar Tipo Conexión</span>
-                <kbd className="font-mono text-xs text-neutral-200 bg-neutral-900 px-2 py-0.5 rounded border border-neutral-700 border-b-2 shadow-sm">
+                <kbd className="px-2 py-1 bg-neutral-900 border border-neutral-700/80 rounded text-[11px] font-mono text-neutral-200 shadow-sm">
                   Clic en el Hilo
                 </kbd>
               </div>
-              <div className="flex justify-between items-center py-2 border-b border-[#222733] hover:bg-white/[0.01] px-1 transition-colors">
+              <div className="flex items-center justify-between py-3 px-2 border-b border-neutral-800/80 text-xs text-neutral-300">
                 <span className="font-sans text-neutral-400">Desplazar Cámara</span>
-                <kbd className="font-mono text-xs text-neutral-200 bg-neutral-900 px-2 py-0.5 rounded border border-neutral-700 border-b-2 shadow-sm">
+                <kbd className="px-2 py-1 bg-neutral-900 border border-neutral-700/80 rounded text-[11px] font-mono text-neutral-200 shadow-sm">
                   Espacio + Arrastrar
                 </kbd>
               </div>
-              <div className="flex justify-between items-center py-2 border-b border-[#222733] hover:bg-white/[0.01] px-1 transition-colors">
+              <div className="flex items-center justify-between py-3 px-2 border-b border-neutral-800/80 text-xs text-neutral-300">
                 <span className="font-sans text-neutral-400">Zoom Lienzo</span>
-                <kbd className="font-mono text-xs text-neutral-200 bg-neutral-900 px-2 py-0.5 rounded border border-neutral-700 border-b-2 shadow-sm">
+                <kbd className="px-2 py-1 bg-neutral-900 border border-neutral-700/80 rounded text-[11px] font-mono text-neutral-200 shadow-sm">
                   Rueda del Mouse
                 </kbd>
               </div>
-              <div className="flex justify-between items-center py-2 border-b border-[#222733] hover:bg-white/[0.01] px-1 transition-colors">
+              <div className="flex items-center justify-between py-3 px-2 border-b border-neutral-800/80 text-xs text-neutral-300">
                 <span className="font-sans text-neutral-400">Menú de Opciones</span>
-                <kbd className="font-mono text-xs text-neutral-200 bg-neutral-900 px-2 py-0.5 rounded border border-neutral-700 border-b-2 shadow-sm">
+                <kbd className="px-2 py-1 bg-neutral-900 border border-neutral-700/80 rounded text-[11px] font-mono text-neutral-200 shadow-sm">
                   Clic Derecho (Nota)
                 </kbd>
               </div>
             </div>
 
-            <div className="h-px bg-[#222733] mt-1" />
-
-            <div className="text-[10px] text-neutral-600 text-center font-mono uppercase tracking-wider">
+            <div className="mt-4 py-3 text-center text-[10px] text-neutral-500 font-mono uppercase tracking-wider">
               GraviNote por Nothing Sense · v1.0.0
             </div>
           </div>

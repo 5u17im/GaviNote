@@ -20,6 +20,10 @@ Todos los cambios notables en este proyecto serán documentados en este archivo.
 - **HUD e Interfaz:** Sliders interactivos de física, panel de atajos de teclado, botones para comandos (Big Bang, Limpiar, Centrar) y serializadores JSON para descarga/carga de respaldos locales.
 - **Persistencia Local:** Auto-guardado en localStorage con debounce de 500ms y toast de recuperación (deshacer borrado) con contador visual de 10 segundos.
 
+### Corregido
+- **Aviso de Hidratación:** Corrección de Hydration Mismatch en Next.js mediante el uso del hook `mounted` en el lienzo de física, evitando discrepancias de coordenadas de pantalla del lado del servidor.
+- **Prefijos CSS:** Corrección del orden de las directivas `-webkit-backdrop-filter` y `backdrop-filter` en la hoja de estilos de glassmorphism.
+
 ---
 
 ## [1.0.0-fase0] - 2026-07-10

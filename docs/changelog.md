@@ -27,7 +27,7 @@ Todos los cambios notables en este proyecto serán documentados en este archivo.
 - **Gestos Interactivos de Nodos:** Corrección de conflictos de pointer capture implementando un umbral de arrastre de `4px` en `useDragNode.ts`, permitiendo procesar de manera nativa y sin interferencias los eventos de click, doble click (editar) y right-click (menú contextual).
 - **Ruteo de Conexiones SVG:** Ruteo unificado de puntero en el visor para permitir el dibujado y enlace de resortes SVG con `Shift + Drag` cuando el foco está capturado por una tarjeta de nodo.
 - **Menú Contextual:** Elevación de las coordenadas del menú contextual a la raíz del visor en `PhysicsCanvas.tsx` en espacio de pantalla (screen-space), previniendo desvíos por zoom y paneo de cámara.
-- **Advertencias de Renderizado (Zustand):** Eliminado el aviso `Cannot update a component while rendering a different component` al simplificar el flujo de `UndoToast.tsx`, derivando la visibilidad directamente del store (eliminando estados locales duplicados) y difiriendo la limpieza en un `setTimeout` asíncrono. También se corrigió el escapado de caracteres especiales en JSX.
+- **Advertencias de Renderizado (Zustand):** Eliminado definitivamente el aviso `Cannot update a component while rendering a different component` al re-diseñar `UndoToast.tsx` para animar la barra con CSS `@keyframes` por GPU, eliminando el 100% de estados locales e intervalos. La visibilidad se deriva directamente del store y la expiración se gestiona asíncronamente con un único `setTimeout`.
 
 ---
 

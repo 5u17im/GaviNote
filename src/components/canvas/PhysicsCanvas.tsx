@@ -68,6 +68,11 @@ export function PhysicsCanvas() {
 
   // Spacebar tracking
   const [isSpacePressed, setIsSpacePressed] = useState(false);
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   // Restore state from Local Storage or load demo on mount
   useEffect(() => {
@@ -427,8 +432,12 @@ export function PhysicsCanvas() {
     removeNode(id);
   };
 
-  const cx = typeof window !== 'undefined' ? window.innerWidth / 2 : 0;
-  const cy = typeof window !== 'undefined' ? window.innerHeight / 2 : 0;
+  if (!mounted) {
+    return <div className="w-screen h-screen bg-[#0B0F19]" />;
+  }
+
+  const cx = window.innerWidth / 2;
+  const cy = window.innerHeight / 2;
 
   return (
     <div

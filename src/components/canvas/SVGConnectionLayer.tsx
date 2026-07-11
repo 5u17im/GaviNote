@@ -74,7 +74,6 @@ export function SVGConnectionLayer({
               stroke={visual.stroke}
               strokeWidth={visual.strokeWidth}
               strokeDasharray={visual.strokeDasharray}
-              className="transition-all duration-300"
             />
           </g>
         );

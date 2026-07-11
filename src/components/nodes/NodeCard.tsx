@@ -13,8 +13,6 @@ interface NodeCardProps {
   onDelete: (id: string) => void;
   onChangeCategory: (id: string, category: NodeCategory) => void;
   onDragStart: (e: React.PointerEvent<HTMLDivElement>, id: string) => void;
-  onDragMove: (e: React.PointerEvent<HTMLDivElement>) => void;
-  onDragEnd: (e: React.PointerEvent<HTMLDivElement>) => void;
   onContextMenu: (x: number, y: number) => void;
   domRef: (el: HTMLDivElement | null) => void;
 }
@@ -27,8 +25,6 @@ export function NodeCard({
   onDelete,
   onChangeCategory,
   onDragStart,
-  onDragMove,
-  onDragEnd,
   onContextMenu,
   domRef,
 }: NodeCardProps) {
@@ -89,8 +85,6 @@ export function NodeCard({
           onDragStart(e, node.id);
         }
       }}
-      onPointerMove={onDragMove}
-      onPointerUp={onDragEnd}
       onContextMenu={handleContextMenu}
       onDoubleClick={handleDoubleClick}
       className="glass-card flex flex-col p-4 rounded-xl select-none z-10 hover:border-white/20 transition-colors pointer-events-auto"

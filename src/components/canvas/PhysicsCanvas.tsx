@@ -296,30 +296,16 @@ export function PhysicsCanvas() {
     screenToWorld,
   });
 
-  // Hook for pointer drag handler
+  // Hook for pointer drag handler — move/up events are now registered on window
+  // directly inside the hook to prevent the "wrong card moves" bug
   const dragNode = useDragNode({
     engineRef,
     bodiesRef,
+    domRefs,
     zoom,
     panX,
     panY,
   });
-
-  const handleNodePointerMove = (e: React.PointerEvent<HTMLDivElement>) => {
-    if (connDraw.isDrawing) {
-      connDraw.moveConnection(e);
-    } else {
-      dragNode.onPointerMove(e);
-    }
-  };
-
-  const handleNodePointerUp = (e: React.PointerEvent<HTMLDivElement>) => {
-    if (connDraw.isDrawing) {
-      connDraw.endConnection(e);
-    } else {
-      dragNode.onPointerUp(e);
-    }
-  };
 
   // Spacebar key listeners for Panning
   useEffect(() => {
@@ -427,7 +413,7 @@ export function PhysicsCanvas() {
     if (!body) return;
 
     const didStartConn = connDraw.startConnection(e, id, body.position);
-    
+
     if (!didStartConn) {
       dragNode.onPointerDown(e, id);
     }
@@ -496,8 +482,6 @@ export function PhysicsCanvas() {
           onDelete={handleRemoveNode} // Trigger particle explosion during delete
           onChangeCategory={(id, cat) => updateNode(id, { category: cat })}
           onDragStart={handleNodePointerDown}
-          onDragMove={handleNodePointerMove}
-          onDragEnd={handleNodePointerUp}
           onContextMenu={(id, x, y) => setContextMenu({ nodeId: id, x, y })}
           domRefs={domRefs}
         />

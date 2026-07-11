@@ -12,8 +12,6 @@ interface NodeOverlayProps {
   onDelete: (id: string) => void;
   onChangeCategory: (id: string, category: NodeCategory) => void;
   onDragStart: (e: React.PointerEvent<HTMLDivElement>, id: string) => void;
-  onDragMove: (e: React.PointerEvent<HTMLDivElement>) => void;
-  onDragEnd: (e: React.PointerEvent<HTMLDivElement>) => void;
   onContextMenu: (id: string, x: number, y: number) => void;
   domRefs: React.MutableRefObject<Map<string, HTMLElement>>;
 }
@@ -26,8 +24,6 @@ export function NodeOverlay({
   onDelete,
   onChangeCategory,
   onDragStart,
-  onDragMove,
-  onDragEnd,
   onContextMenu,
   domRefs,
 }: NodeOverlayProps) {
@@ -43,8 +39,6 @@ export function NodeOverlay({
           onDelete={onDelete}
           onChangeCategory={onChangeCategory}
           onDragStart={onDragStart}
-          onDragMove={onDragMove}
-          onDragEnd={onDragEnd}
           onContextMenu={(x, y) => onContextMenu(node.id, x, y)}
           domRef={(el) => {
             if (el) {

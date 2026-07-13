@@ -117,8 +117,9 @@ export function WelcomeSplash() {
     const animate = (time: number) => {
       const elapsed = (time - startTime) / 1000;
 
-      // Clear with slight trailing opacity to create cosmic glow motion blur
-      ctx.fillStyle = 'rgba(11, 15, 25, 0.25)';
+      // Clear using default source-over blend mode to keep background dark and create motion blur trails
+      ctx.globalCompositeOperation = 'source-over';
+      ctx.fillStyle = 'rgba(11, 15, 25, 0.18)'; // Lower opacity = longer trails
       ctx.fillRect(0, 0, width, height);
 
       // Additive blending for neon galaxy glowing stars
@@ -138,20 +139,20 @@ export function WelcomeSplash() {
           // Phase 1: Assemble and orbit text
           const dx = p.targetX - p.x;
           const dy = p.targetY - p.y;
-          // Star orbit oscillation around the target letter shape
+
+          // Star orbit oscillation around the target letter shape (wiggles once close)
           p.angle += p.speed;
-          const ox = Math.cos(p.angle) * 2;
-          const oy = Math.sin(p.angle) * 2;
+          const ox = Math.cos(p.angle) * 1.2;
+          const oy = Math.sin(p.angle) * 1.2;
 
-          // Strong gravitational pull to assemble text (ease in)
-          const ease = Math.min(1.0, elapsed / 1.5);
-          const pull = 0.08 * ease;
-
-          p.vx += (dx * pull - p.vx) * 0.1;
-          p.vy += (dy * pull - p.vy) * 0.1;
+          // Arrival steering physics: accelerate towards target, apply high friction to settle
+          p.vx += dx * 0.025;
+          p.vy += dy * 0.025;
+          p.vx *= 0.84;
+          p.vy *= 0.84;
           
-          p.x += p.vx + ox * (1 - ease * 0.8);
-          p.y += p.vy + oy * (1 - ease * 0.8);
+          p.x += p.vx + ox;
+          p.y += p.vy + oy;
         } else {
           // Phase 2: Dissolve spiraling into the black hole center
           const cx = width / 2;

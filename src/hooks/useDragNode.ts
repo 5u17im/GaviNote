@@ -44,138 +44,152 @@ export function useDragNode({ engineRef, bodiesRef, constraintsRef, domRefs, zoo
   // which DOM element the cursor is over, preventing the "wrong card moves" bug.
   useEffect(() => {
     const onMove = (e: PointerEvent) => {
-      const engine = engineRef.current;
-      const info = dragInfo.current;
-      if (!info || !engine || e.pointerId !== info.pointerId) return;
+      try {
+        const engine = engineRef.current;
+        const info = dragInfo.current;
+        if (!info || !engine || e.pointerId !== info.pointerId) return;
 
-      const body = bodiesRef.current.get(info.nodeId);
-      if (!body) return;
+        const body = bodiesRef.current.get(info.nodeId);
+        if (!body) return;
 
-      const dx = e.clientX - info.startClientX;
-      const dy = e.clientY - info.startClientY;
-      const distance = Math.sqrt(dx * dx + dy * dy);
+        const dx = e.clientX - info.startClientX;
+        const dy = e.clientY - info.startClientY;
+        const distance = Math.sqrt(dx * dx + dy * dy);
 
-      // 4px threshold: prevents micro-drags from interfering with click/dblclick
-      if (!info.hasCaptured && distance < 4) return;
+        // 4px threshold: prevents micro-drags from interfering with click/dblclick
+        if (!info.hasCaptured && distance < 4) return;
 
-      if (!info.hasCaptured) {
-        // Capture the pointer on the exact element where pointerDown fired so
-        // subsequent events route here even when cursor leaves that element
-        if (info.captureEl) {
-          try { info.captureEl.setPointerCapture(e.pointerId); } catch { /* ignore */ }
-        }
-        info.hasCaptured = true;
-
-        // Temporarily make the body static during drag to disable gravity/forces
-        Matter.Body.setStatic(body, true);
-        Matter.Body.setVelocity(body, { x: 0, y: 0 });
-        Matter.Body.setAngularVelocity(body, 0);
-        (body as unknown as { isDragging?: boolean }).isDragging = true;
-
-        // Temporarily remove constraints connected to this body from the Matter.js world
-        const world = engine.world;
-        constraintsRef.current.forEach((constraint) => {
-          if (constraint.bodyA === body || constraint.bodyB === body) {
-            Matter.Composite.remove(world, constraint);
+        if (!info.hasCaptured) {
+          // Capture the pointer on the exact element where pointerDown fired so
+          // subsequent events route here even when cursor leaves that element
+          if (info.captureEl) {
+            try { info.captureEl.setPointerCapture(e.pointerId); } catch { /* ignore */ }
           }
-        });
-      }
+          info.hasCaptured = true;
 
-      const currentZoom = zoomRef.current;
-      const worldDx = dx / currentZoom;
-      const worldDy = dy / currentZoom;
+          // Temporarily make the body static during drag to disable gravity/forces
+          Matter.Body.setStatic(body, true);
+          Matter.Body.setVelocity(body, { x: 0, y: 0 });
+          Matter.Body.setAngularVelocity(body, 0);
+          (body as unknown as { isDragging?: boolean }).isDragging = true;
 
-      const newX = info.startBodyX + worldDx;
-      const newY = info.startBodyY + worldDy;
-
-      // Velocity tracking for inertia on release
-      const currentTime = performance.now();
-      const dt = Math.max(1, currentTime - info.lastTime);
-      const instantVx = (newX - info.lastX) / (dt / 16.67);
-      const instantVy = (newY - info.lastY) / (dt / 16.67);
-
-      info.velocities.push({ x: instantVx, y: instantVy });
-      if (info.velocities.length > 5) info.velocities.shift();
-
-      Matter.Body.setPosition(body, { x: newX, y: newY });
-
-      info.lastTime = currentTime;
-      info.lastX = newX;
-      info.lastY = newY;
-    };
-
-    const onUp = (e: PointerEvent) => {
-      const engine = engineRef.current;
-      const info = dragInfo.current;
-      if (!info || !engine || e.pointerId !== info.pointerId) return;
-
-      const body = bodiesRef.current.get(info.nodeId);
-
-      if (body) {
-        delete (body as unknown as { isDragging?: boolean }).isDragging;
-      }
-
-      if (body && info.hasCaptured) {
-        // Restore dynamic status unless the node is pinned
-        const nodes = useGraviStore.getState().nodes;
-        const nodeMeta = nodes.find(n => n.id === info.nodeId);
-        const isPinned = nodeMeta?.isPinned || false;
-
-        if (!isPinned) {
-          Matter.Body.setStatic(body, false);
-          
-          const count = info.velocities.length;
-          let avgVx = 0, avgVy = 0;
-          if (count > 0) {
-            const sum = info.velocities.reduce((acc, v) => ({ x: acc.x + v.x, y: acc.y + v.y }), { x: 0, y: 0 });
-            avgVx = sum.x / count;
-            avgVy = sum.y / count;
-          }
-          Matter.Body.setVelocity(body, {
-            x: Math.min(Math.max(avgVx, -15), 15),
-            y: Math.min(Math.max(avgVy, -15), 15),
+          // Temporarily remove constraints connected to this body from the Matter.js world
+          const world = engine.world;
+          constraintsRef.current.forEach((constraint) => {
+            if (constraint.bodyA === body || constraint.bodyB === body) {
+              Matter.Composite.remove(world, constraint);
+            }
           });
         }
 
-        // Restore constraints connected to this body in the Matter.js world
-        const world = engine.world;
-        constraintsRef.current.forEach((constraint) => {
-          if (constraint.bodyA === body || constraint.bodyB === body) {
-            const bodyA = constraint.bodyA;
-            const bodyB = constraint.bodyB;
-            if (bodyA && bodyB) {
-              const nodeA = nodes.find(n => n.id === bodyA.label);
-              const nodeB = nodes.find(n => n.id === bodyB.label);
-              const isAnyPinned = nodeA?.isPinned || nodeB?.isPinned || false;
+        const currentZoom = zoomRef.current;
+        const worldDx = dx / currentZoom;
+        const worldDy = dy / currentZoom;
 
-              if (isAnyPinned) {
-                // Dynamically set spring length to the new dragged distance to allow branches to stay at new positions
-                const dx = bodyA.position.x - bodyB.position.x;
-                const dy = bodyA.position.y - bodyB.position.y;
-                const currentDist = Math.sqrt(dx * dx + dy * dy);
-                constraint.length = Math.max(80, currentDist);
-              } else {
-                // Reset to standard spring length for dynamic nodes
-                constraint.length = 260;
+        const newX = info.startBodyX + worldDx;
+        const newY = info.startBodyY + worldDy;
+
+        // Velocity tracking for inertia on release
+        const currentTime = performance.now();
+        const dt = Math.max(1, currentTime - info.lastTime);
+        const instantVx = (newX - info.lastX) / (dt / 16.67);
+        const instantVy = (newY - info.lastY) / (dt / 16.67);
+
+        info.velocities.push({ x: instantVx, y: instantVy });
+        if (info.velocities.length > 5) info.velocities.shift();
+
+        Matter.Body.setPosition(body, { x: newX, y: newY });
+
+        info.lastTime = currentTime;
+        info.lastX = newX;
+        info.lastY = newY;
+      } catch (err) {
+        console.error("Error in drag onMove handler:", err);
+      }
+    };
+
+    const onUp = (e: PointerEvent) => {
+      try {
+        const engine = engineRef.current;
+        const info = dragInfo.current;
+        if (!info || !engine || e.pointerId !== info.pointerId) return;
+
+        const body = bodiesRef.current.get(info.nodeId);
+
+        if (body) {
+          delete (body as unknown as { isDragging?: boolean }).isDragging;
+        }
+
+        if (body && info.hasCaptured) {
+          // Restore dynamic status unless the node is pinned
+          const nodes = useGraviStore.getState().nodes;
+          const nodeMeta = nodes.find(n => n.id === info.nodeId);
+          const isPinned = nodeMeta?.isPinned || false;
+
+          if (!isPinned) {
+            Matter.Body.setStatic(body, false);
+            
+            const count = info.velocities.length;
+            let avgVx = 0, avgVy = 0;
+            if (count > 0) {
+              const sum = info.velocities.reduce((acc, v) => ({ x: acc.x + v.x, y: acc.y + v.y }), { x: 0, y: 0 });
+              avgVx = sum.x / count;
+              avgVy = sum.y / count;
+            }
+            Matter.Body.setVelocity(body, {
+              x: Math.min(Math.max(avgVx, -15), 15),
+              y: Math.min(Math.max(avgVy, -15), 15),
+            });
+          }
+
+          // Persist final position to the Zustand store so it saves to localStorage
+          useGraviStore.getState().updateNode(info.nodeId, {
+            initialX: body.position.x,
+            initialY: body.position.y,
+          });
+
+          // Restore constraints connected to this body in the Matter.js world
+          const world = engine.world;
+          constraintsRef.current.forEach((constraint) => {
+            if (constraint.bodyA === body || constraint.bodyB === body) {
+              const bodyA = constraint.bodyA;
+              const bodyB = constraint.bodyB;
+              if (bodyA && bodyB) {
+                const nodeA = nodes.find(n => n.id === bodyA.label);
+                const nodeB = nodes.find(n => n.id === bodyB.label);
+                const isAnyPinned = nodeA?.isPinned || nodeB?.isPinned || false;
+
+                if (isAnyPinned) {
+                  // Dynamically set spring length to the new dragged distance to allow branches to stay at new positions
+                  const dx = bodyA.position.x - bodyB.position.x;
+                  const dy = bodyA.position.y - bodyB.position.y;
+                  const currentDist = Math.sqrt(dx * dx + dy * dy);
+                  constraint.length = Math.max(80, currentDist);
+                } else {
+                  // Reset to standard spring length for dynamic nodes
+                  constraint.length = 260;
+                }
+
+                // Wake up both bodies to ensure no collision loss
+                Matter.Sleeping.set(bodyA, false);
+                Matter.Sleeping.set(bodyB, false);
               }
 
-              // Wake up both bodies to ensure no collision loss
-              Matter.Sleeping.set(bodyA, false);
-              Matter.Sleeping.set(bodyB, false);
+              if (!Matter.Composite.allConstraints(world).includes(constraint)) {
+                Matter.Composite.add(world, constraint);
+              }
             }
+          });
+        }
 
-            if (!Matter.Composite.allConstraints(world).includes(constraint)) {
-              Matter.Composite.add(world, constraint);
-            }
-          }
-        });
+        if (info.captureEl && info.hasCaptured) {
+          try { info.captureEl.releasePointerCapture(e.pointerId); } catch { /* ignore */ }
+        }
+      } catch (err) {
+        console.error("Error in drag onUp handler:", err);
+      } finally {
+        dragInfo.current = null;
       }
-
-      if (info.captureEl && info.hasCaptured) {
-        try { info.captureEl.releasePointerCapture(e.pointerId); } catch { /* ignore */ }
-      }
-
-      dragInfo.current = null;
     };
 
     window.addEventListener('pointermove', onMove);

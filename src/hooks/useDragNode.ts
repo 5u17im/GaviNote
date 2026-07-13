@@ -141,6 +141,15 @@ export function useDragNode({ engineRef, bodiesRef, constraintsRef, domRefs, zoo
         const world = engine.world;
         constraintsRef.current.forEach((constraint) => {
           if (constraint.bodyA === body || constraint.bodyB === body) {
+            // Dynamically set spring length to the new dragged distance
+            // to allow nodes to stay at their new relative position without snapping back
+            if (constraint.bodyA && constraint.bodyB) {
+              const dx = constraint.bodyA.position.x - constraint.bodyB.position.x;
+              const dy = constraint.bodyA.position.y - constraint.bodyB.position.y;
+              const currentDist = Math.sqrt(dx * dx + dy * dy);
+              constraint.length = Math.max(80, currentDist);
+            }
+
             if (!Matter.Composite.allConstraints(world).includes(constraint)) {
               Matter.Composite.add(world, constraint);
             }

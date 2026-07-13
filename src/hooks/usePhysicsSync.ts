@@ -119,10 +119,16 @@ export function usePhysicsSync({
             const t = Math.min(1.0, distance / 350);
 
             // Spaghettification stretching: long on pull axis (X), narrow on perpendicular (Y)
-            const scaleX = (1.0 + (1.0 - t) * 1.8) * t;
-            const scaleY = (t * 0.35) * t;
+            const scaleX = (1.0 + (1.0 - t) * 2.5) * t;
+            const scaleY = (0.05 + t * 0.65) * t;
 
-            domElement.style.transform = `translate3d(${x}px, ${y}px, 0) rotate(${pullAngle}rad) scale(${scaleX}, ${scaleY})`;
+            // Tangential skew angle to simulate spiral shear stress (curved path bending)
+            const skewVal = (1.0 - t) * 35;
+
+            // 3D twist: spin the card around its longitudinal axis as it sinks
+            const rotateXVal = (1.0 - t) * 360;
+
+            domElement.style.transform = `perspective(800px) translate3d(${x}px, ${y}px, 0) rotate(${pullAngle}rad) rotateX(${rotateXVal}deg) skewX(${skewVal}deg) scale(${scaleX}, ${scaleY})`;
             domElement.style.opacity = `${Math.min(1.0, distance / 120)}`; // Fade out close to singularity
           } else {
             domElement.style.transform = `translate3d(${x}px, ${y}px, 0) rotate(${body.angle}rad)`;

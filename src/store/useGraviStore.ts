@@ -30,6 +30,7 @@ interface GraviStore {
   setGravity: (val: number) => void;
   setAirFriction: (val: number) => void;
   setMagnetStrength: (val: number) => void;
+  setVortexGravity: (val: number) => void;
   setPan: (x: number | ((prev: number) => number), y: number | ((prev: number) => number)) => void;
   setZoom: (zoom: number | ((prev: number) => number)) => void;
   clearCanvas: () => void;
@@ -49,6 +50,7 @@ export const useGraviStore = create<GraviStore>((set, get) => ({
     zoom: 1.0,
     panX: 0,
     panY: 0,
+    vortexGravity: 1.0,
   },
   backupDeleted: null,
 
@@ -168,6 +170,12 @@ export const useGraviStore = create<GraviStore>((set, get) => ({
   setMagnetStrength: (val) => {
     set((state) => ({
       physicsConfig: { ...state.physicsConfig, magnetStrength: val },
+    }));
+  },
+
+  setVortexGravity: (val) => {
+    set((state) => ({
+      physicsConfig: { ...state.physicsConfig, vortexGravity: val },
     }));
   },
 

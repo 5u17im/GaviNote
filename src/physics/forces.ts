@@ -79,6 +79,7 @@ export function applyVortexSuction(
   bodies: Map<string, Matter.Body>,
   nodes: NodeMeta[],
   vortexWorldPos: { x: number; y: number },
+  vortexGravity: number,
   onReachVortex: (id: string) => void
 ) {
   nodes.forEach((node) => {
@@ -106,13 +107,13 @@ export function applyVortexSuction(
       return;
     }
 
-    // 1. Suction pull force (increased for fast, visible acceleration)
-    const pullStrength = 0.05;
+    // 1. Suction pull force (scaled by vortexGravity config)
+    const pullStrength = 0.05 * vortexGravity;
     const fx = (dx / distance) * pullStrength;
     const fy = (dy / distance) * pullStrength;
 
-    // 2. Spiral tangential force (whirlpool effect)
-    const spiralStrength = 0.03;
+    // 2. Spiral tangential force (whirlpool effect scaled by vortexGravity config)
+    const spiralStrength = 0.03 * vortexGravity;
     const sx = (-dy / distance) * spiralStrength;
     const sy = (dx / distance) * spiralStrength;
 

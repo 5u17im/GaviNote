@@ -30,11 +30,12 @@ export function HUDPanel() {
     setGravity,
     setAirFriction,
     setMagnetStrength,
+    setVortexGravity,
     loadState,
     addNode,
   } = useGraviStore();
 
-  const { gravity, airFriction, magnetStrength, panX, panY } = physicsConfig;
+  const { gravity, airFriction, magnetStrength, panX, panY, vortexGravity = 1.0 } = physicsConfig;
 
   // Trigger Big Bang
   const handleBigBang = () => {
@@ -229,6 +230,26 @@ export function HUDPanel() {
                 className="w-full hud-slider mt-1.5 cursor-pointer"
               />
               <span className="text-[9px] text-neutral-600 font-mono italic mt-0.5">Atracción por tags / Repulsión de colisión</span>
+            </div>
+
+            {/* Vortex Gravity */}
+            <div className="flex flex-col gap-1">
+              <div className="flex items-center justify-between text-[11px] font-mono">
+                <span className="text-neutral-500">{"// Succión del Vórtice"}</span>
+                <span className="text-neutral-300 font-bold">
+                  {(vortexGravity * 100).toFixed(0)}%
+                </span>
+              </div>
+              <input
+                type="range"
+                min="0.1"
+                max="1.0"
+                step="0.05"
+                value={vortexGravity}
+                onChange={(e) => setVortexGravity(parseFloat(e.target.value))}
+                className="w-full hud-slider mt-1.5 cursor-pointer"
+              />
+              <span className="text-[9px] text-neutral-600 font-mono italic mt-0.5">Gravedad del hoyo negro al eliminar ideas</span>
             </div>
           </div>
 

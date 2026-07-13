@@ -44,7 +44,7 @@ export function PhysicsCanvas() {
     loadState,
   } = useGraviStore();
 
-  const { zoom, panX, panY, gravity, magnetStrength } = physicsConfig;
+  const { zoom, panX, panY, gravity, magnetStrength, vortexGravity = 1.0 } = physicsConfig;
 
   // Screen coordinates to world coordinates conversion helper
   const screenToWorld = React.useCallback((clientX: number, clientY: number) => {
@@ -380,7 +380,7 @@ export function PhysicsCanvas() {
       const vy = window.innerHeight - 56;
       const vortexWorld = screenToWorld(vx, vy);
 
-      applyVortexSuction(bodiesRef.current, nodes, vortexWorld, (nodeId) => {
+      applyVortexSuction(bodiesRef.current, nodes, vortexWorld, vortexGravity, (nodeId) => {
         // Trigger particle explosion at the center of the vortex
         const body = bodiesRef.current.get(nodeId);
         const node = nodes.find((n) => n.id === nodeId);
@@ -396,7 +396,7 @@ export function PhysicsCanvas() {
     return () => {
       Matter.Events.off(engine, 'afterUpdate', handleTick);
     };
-  }, [engineRef, nodes, removeNode, panX, panY, zoom, screenToWorld]);
+  }, [engineRef, nodes, removeNode, panX, panY, zoom, screenToWorld, vortexGravity]);
 
 
 

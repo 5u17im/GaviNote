@@ -137,16 +137,22 @@ export function PhysicsCanvas() {
     loadState(demoNodes, INITIAL_DEMO_CONNECTIONS);
   }, [loadState]);
 
-  // Debounced Auto-save to Local Storage
+  // Debounced Auto-save to Local Storage (excluding deleting nodes and their connections)
   useEffect(() => {
     let timeout: NodeJS.Timeout;
 
     const unsubscribe = useGraviStore.subscribe((state) => {
       clearTimeout(timeout);
       timeout = setTimeout(() => {
+        const activeNodes = state.nodes.filter((n) => !n.isDeleting);
+        const activeNodeIds = new Set(activeNodes.map((n) => n.id));
+        const activeConnections = state.connections.filter(
+          (c) => activeNodeIds.has(c.sourceId) && activeNodeIds.has(c.targetId)
+        );
+
         const dataToSave = {
-          nodes: state.nodes,
-          connections: state.connections,
+          nodes: activeNodes,
+          connections: activeConnections,
         };
         localStorage.setItem('gravinote-saved-state', JSON.stringify(dataToSave));
       }, 500); // 500ms debounce
@@ -394,7 +400,7 @@ export function PhysicsCanvas() {
       const vy = window.innerHeight - 56;
       const vortexWorld = screenToWorld(vx, vy);
 
-      applyVortexSuction(bodiesRef.current, nodes, vortexWorld, vortexGravity, (nodeId) => {
+      applyVortexSuction(engine.world, bodiesRef.current, nodes, vortexWorld, vortexGravity, (nodeId) => {
         // Trigger particle explosion at the center of the vortex
         const body = bodiesRef.current.get(nodeId);
         const node = nodes.find((n) => n.id === nodeId);

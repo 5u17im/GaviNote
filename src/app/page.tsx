@@ -1,6 +1,7 @@
 'use client';
 
 import dynamic from 'next/dynamic';
+import { WelcomeSplash } from '../components/welcome/WelcomeSplash';
 
 // Disable SSR for the Physics Canvas component to avoid hydration mismatches
 // with screen size calculations and canvas initialization.
@@ -13,6 +14,7 @@ export default function Home() {
   return (
     <main className="w-screen h-screen bg-[#0B0F19]">
       <PhysicsCanvas />
+      <WelcomeSplash />
     </main>
   );
 }

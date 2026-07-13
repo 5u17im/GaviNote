@@ -76,6 +76,7 @@ export function applyMagneticForces(
 }
 
 export function applyVortexSuction(
+  world: Matter.World,
   bodies: Map<string, Matter.Body>,
   nodes: NodeMeta[],
   vortexWorldPos: { x: number; y: number },
@@ -87,6 +88,14 @@ export function applyVortexSuction(
 
     const body = bodies.get(node.id);
     if (!body) return;
+
+    // Double safety: remove any leftover constraints connected to this body from the Matter.js world
+    const worldConstraints = Matter.Composite.allConstraints(world);
+    worldConstraints.forEach((constraint) => {
+      if (constraint.bodyA === body || constraint.bodyB === body) {
+        Matter.Composite.remove(world, constraint);
+      }
+    });
 
     // Turn off collisions to slide cleanly into the black hole
     if (body.collisionFilter.mask !== 0) {

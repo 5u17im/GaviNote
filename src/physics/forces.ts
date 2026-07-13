@@ -92,23 +92,27 @@ export function applyVortexSuction(
       body.collisionFilter.mask = 0;
     }
 
+    // Reset friction and mass for uniform suction speed
+    body.frictionAir = 0;
+    body.mass = 1.0;
+
     const dx = vortexWorldPos.x - body.position.x;
     const dy = vortexWorldPos.y - body.position.y;
     const distance = Math.sqrt(dx * dx + dy * dy);
 
-    if (distance < 45) {
+    if (distance < 55) {
       // Singularity reached
       onReachVortex(node.id);
       return;
     }
 
-    // 1. Suction pull force
-    const pullStrength = 0.0006;
+    // 1. Suction pull force (increased for fast, visible acceleration)
+    const pullStrength = 0.05;
     const fx = (dx / distance) * pullStrength;
     const fy = (dy / distance) * pullStrength;
 
     // 2. Spiral tangential force (whirlpool effect)
-    const spiralStrength = 0.00045;
+    const spiralStrength = 0.03;
     const sx = (-dy / distance) * spiralStrength;
     const sy = (dx / distance) * spiralStrength;
 

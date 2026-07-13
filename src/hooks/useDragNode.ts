@@ -5,13 +5,14 @@ import { useGraviStore } from '../store/useGraviStore';
 interface UseDragNodeProps {
   engineRef: React.MutableRefObject<Matter.Engine | null>;
   bodiesRef: React.MutableRefObject<Map<string, Matter.Body>>;
+  constraintsRef: React.MutableRefObject<Map<string, Matter.Constraint>>;
   domRefs: React.MutableRefObject<Map<string, HTMLElement>>;
   zoom: number;
   panX: number;
   panY: number;
 }
 
-export function useDragNode({ engineRef, bodiesRef, domRefs, zoom, panX, panY }: UseDragNodeProps) {
+export function useDragNode({ engineRef, bodiesRef, constraintsRef, domRefs, zoom, panX, panY }: UseDragNodeProps) {
   // Store zoom/pan in refs so the window-level event listeners always read current values
   // without needing to re-register
   const zoomRef = useRef(zoom);
@@ -69,6 +70,14 @@ export function useDragNode({ engineRef, bodiesRef, domRefs, zoom, panX, panY }:
         Matter.Body.setStatic(body, true);
         Matter.Body.setVelocity(body, { x: 0, y: 0 });
         Matter.Body.setAngularVelocity(body, 0);
+
+        // Temporarily remove constraints connected to this body from the Matter.js world
+        const world = engine.world;
+        constraintsRef.current.forEach((constraint) => {
+          if (constraint.bodyA === body || constraint.bodyB === body) {
+            Matter.Composite.remove(world, constraint);
+          }
+        });
       }
 
       const currentZoom = zoomRef.current;
@@ -122,6 +131,16 @@ export function useDragNode({ engineRef, bodiesRef, domRefs, zoom, panX, panY }:
             y: Math.min(Math.max(avgVy, -15), 15),
           });
         }
+
+        // Restore constraints connected to this body in the Matter.js world
+        const world = engine.world;
+        constraintsRef.current.forEach((constraint) => {
+          if (constraint.bodyA === body || constraint.bodyB === body) {
+            if (!Matter.Composite.allConstraints(world).includes(constraint)) {
+              Matter.Composite.add(world, constraint);
+            }
+          }
+        });
       }
 
       if (info.captureEl && info.hasCaptured) {

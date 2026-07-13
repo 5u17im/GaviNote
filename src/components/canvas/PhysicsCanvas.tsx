@@ -70,6 +70,7 @@ export function PhysicsCanvas() {
   const dragNode = useDragNode({
     engineRef,
     bodiesRef,
+    constraintsRef,
     domRefs,
     zoom,
     panX,
@@ -375,8 +376,8 @@ export function PhysicsCanvas() {
     if (!engine) return;
 
     const handleTick = () => {
-      const vx = window.innerWidth - 80;
-      const vy = window.innerHeight - 80;
+      const vx = window.innerWidth - 56;
+      const vy = window.innerHeight - 56;
       const vortexWorld = screenToWorld(vx, vy);
 
       applyVortexSuction(bodiesRef.current, nodes, vortexWorld, (nodeId) => {

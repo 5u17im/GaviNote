@@ -85,6 +85,13 @@ export function usePhysicsSync({
           const nodeMeta = currentNodes.find((n) => n.id === id);
           if (!nodeMeta) continue;
 
+          // Self-healing: if body is static but node is not pinned (and not dragging), restore it to dynamic
+          const isPinned = nodeMeta.isPinned || false;
+          const isDragging = (body as unknown as { isDragging?: boolean }).isDragging || false;
+          if (body.isStatic && !isPinned && !isDragging) {
+            Matter.Body.setStatic(body, false);
+          }
+
           // Use nodeMeta dimensions if available, fallback to category defaults
           const config = CATEGORY_PHYSICS[nodeMeta.category];
           const width = nodeMeta.width ?? config?.width ?? 260;
@@ -100,8 +107,8 @@ export function usePhysicsSync({
             const currentPanX = panXRef.current;
             const currentPanY = panYRef.current;
 
-            const vortexWorldX = (window.innerWidth - 80 - cx - currentPanX) / currentZoom;
-            const vortexWorldY = (window.innerHeight - 80 - cy - currentPanY) / currentZoom;
+            const vortexWorldX = (window.innerWidth - 56 - cx - currentPanX) / currentZoom;
+            const vortexWorldY = (window.innerHeight - 56 - cy - currentPanY) / currentZoom;
 
             const dx = vortexWorldX - body.position.x;
             const dy = vortexWorldY - body.position.y;

@@ -70,6 +70,7 @@ export function useDragNode({ engineRef, bodiesRef, constraintsRef, domRefs, zoo
         Matter.Body.setStatic(body, true);
         Matter.Body.setVelocity(body, { x: 0, y: 0 });
         Matter.Body.setAngularVelocity(body, 0);
+        (body as unknown as { isDragging?: boolean }).isDragging = true;
 
         // Temporarily remove constraints connected to this body from the Matter.js world
         const world = engine.world;
@@ -109,6 +110,10 @@ export function useDragNode({ engineRef, bodiesRef, constraintsRef, domRefs, zoo
       if (!info || !engine || e.pointerId !== info.pointerId) return;
 
       const body = bodiesRef.current.get(info.nodeId);
+
+      if (body) {
+        delete (body as unknown as { isDragging?: boolean }).isDragging;
+      }
 
       if (body && info.hasCaptured) {
         // Restore dynamic status unless the node is pinned

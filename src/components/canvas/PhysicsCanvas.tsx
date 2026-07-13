@@ -228,16 +228,20 @@ export function PhysicsCanvas() {
     }
   }, [nodes, engineRef, dragNode]);
 
-  // Sync Matter.js Constraints with Zustand connections list
+  // Sync Matter.js Constraints with Zustand connections list (destroying physical connections to deleting nodes)
   useEffect(() => {
     const engine = engineRef.current;
     if (!engine) return;
 
     const currentConstraints = constraintsRef.current;
-    const connectionIds = new Set(connections.map((c) => c.id));
+    const nodeIds = new Set(nodes.map((n) => n.id));
 
-    // 1. Add constraints for new connections
+    // 1. Add constraints for new connections (exclude deleting nodes)
     connections.forEach((conn) => {
+      const nodeA = nodes.find(n => n.id === conn.sourceId);
+      const nodeB = nodes.find(n => n.id === conn.targetId);
+      if (nodeA?.isDeleting || nodeB?.isDeleting) return;
+
       if (!currentConstraints.has(conn.id)) {
         const bodyA = bodiesRef.current.get(conn.sourceId);
         const bodyB = bodiesRef.current.get(conn.targetId);
@@ -249,14 +253,24 @@ export function PhysicsCanvas() {
       }
     });
 
-    // 2. Remove constraints for deleted connections
+    // 2. Remove constraints for deleted connections, or if either node is deleting/deleted
     for (const [id, constraint] of currentConstraints.entries()) {
-      if (!connectionIds.has(id)) {
+      const conn = connections.find(c => c.id === id);
+      if (!conn) {
+        destroyConstraint(engine.world, constraint);
+        currentConstraints.delete(id);
+        continue;
+      }
+
+      const nodeA = nodes.find(n => n.id === conn.sourceId);
+      const nodeB = nodes.find(n => n.id === conn.targetId);
+
+      if (!nodeIds.has(conn.sourceId) || !nodeIds.has(conn.targetId) || nodeA?.isDeleting || nodeB?.isDeleting) {
         destroyConstraint(engine.world, constraint);
         currentConstraints.delete(id);
       }
     }
-  }, [connections, engineRef]);
+  }, [connections, nodes, engineRef]);
 
   // Command Listener: Big Bang (applies radial forces)
   useEffect(() => {
@@ -543,7 +557,11 @@ export function PhysicsCanvas() {
 
   // Safe wrapper for note removal that triggers particle disintegration
   const handleRemoveNode = (id: string) => {
-    updateNode(id, { isDeleting: true });
+    updateNode(id, { isDeleting: true, isPinned: false });
+    const body = bodiesRef.current.get(id);
+    if (body) {
+      Matter.Body.setStatic(body, false);
+    }
   };
 
   const cx = window.innerWidth / 2;
@@ -658,6 +676,13 @@ export function PhysicsCanvas() {
               const body = bodiesRef.current.get(contextMenu.nodeId);
               if (body) {
                 Matter.Body.setStatic(body, nextPinned);
+                if (!nextPinned) {
+                  // Give it a tiny random drift velocity so it doesn't look frozen/dead
+                  Matter.Body.setVelocity(body, {
+                    x: (Math.random() - 0.5) * 1.5,
+                    y: (Math.random() - 0.5) * 1.5,
+                  });
+                }
               }
             }
           }}

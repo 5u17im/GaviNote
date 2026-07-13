@@ -7,7 +7,7 @@ export function ConnectionLegend() {
     <div className="absolute bottom-6 left-6 z-40 w-64 rounded-sm border border-[#222733] bg-[#0D0F17]/90 p-3 shadow-xl backdrop-blur-md flex flex-col gap-2.5 pointer-events-auto font-mono text-[11px]">
       {/* Title */}
       <div className="text-[9px] font-bold uppercase tracking-widest text-neutral-500 flex items-center justify-between border-b border-[#222733] pb-1.5">
-        <span>// TELEMETRÍA DE ENLACES</span>
+        <span>{"// TELEMETRÍA DE ENLACES"}</span>
         <span className="h-1 w-1 bg-neutral-600 rounded-none animate-pulse" />
       </div>
 
@@ -40,7 +40,7 @@ export function ConnectionLegend() {
 
       {/* Help footnote */}
       <div className="text-[9px] text-neutral-500 font-mono mt-0.5 border-t border-[#222733] pt-1.5">
-        * Haz clic izquierdo en cualquier hilo para rotar su estado.
+        * Clic izq. en el hilo para cambiar tipo, clic der. para borrar.
       </div>
     </div>
   );

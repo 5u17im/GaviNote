@@ -23,9 +23,9 @@ export function useConnectionDraw({
   screenToWorld,
 }: UseConnectionDrawProps) {
   const [drawingState, setDrawingState] = useState<ConnectionDrawState | null>(null);
-  const dragInfo = useRef<{ pointerId: number; sourceId: string } | null>(null);
+  const dragInfo = useRef<{ pointerId: number; sourceId: string; captureEl: HTMLElement } | null>(null);
 
-  const startConnection = (e: React.PointerEvent<any>, sourceId: string, sourceBodyPos: { x: number; y: number }) => {
+  const startConnection = (e: React.PointerEvent<Element>, sourceId: string, sourceBodyPos: { x: number; y: number }) => {
     // Only trigger if Shift is pressed
     if (!e.shiftKey) return false;
 
@@ -44,13 +44,14 @@ export function useConnectionDraw({
     dragInfo.current = {
       pointerId: e.pointerId,
       sourceId,
+      captureEl: target as HTMLElement,
     };
 
     e.stopPropagation();
     return true;
   };
 
-  const moveConnection = (e: React.PointerEvent<any>) => {
+  const moveConnection = (e: React.PointerEvent<Element>) => {
     if (!dragInfo.current) return;
 
     // Convert current mouse pointer to world coordinates
@@ -66,7 +67,7 @@ export function useConnectionDraw({
     });
   };
 
-  const endConnection = (e: React.PointerEvent<any>) => {
+  const endConnection = (e: React.PointerEvent<Element>) => {
     const info = dragInfo.current;
     if (!info) return;
 
@@ -97,10 +98,12 @@ export function useConnectionDraw({
       addConnection(info.sourceId, targetNodeId);
     }
 
-    try {
-      e.currentTarget.releasePointerCapture(e.pointerId);
-    } catch (err) {
-      // Ignore capture release errors
+    if (info.captureEl) {
+      try {
+        info.captureEl.releasePointerCapture(info.pointerId);
+      } catch {
+        // Ignore capture release errors
+      }
     }
 
     dragInfo.current = null;

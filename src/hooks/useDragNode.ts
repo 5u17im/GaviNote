@@ -1,5 +1,6 @@
 import { useRef, useEffect } from 'react';
 import Matter from 'matter-js';
+import { useGraviStore } from '../store/useGraviStore';
 
 interface UseDragNodeProps {
   engineRef: React.MutableRefObject<Matter.Engine | null>;
@@ -16,9 +17,12 @@ export function useDragNode({ engineRef, bodiesRef, domRefs, zoom, panX, panY }:
   const zoomRef = useRef(zoom);
   const panXRef = useRef(panX);
   const panYRef = useRef(panY);
-  zoomRef.current = zoom;
-  panXRef.current = panX;
-  panYRef.current = panY;
+
+  useEffect(() => {
+    zoomRef.current = zoom;
+    panXRef.current = panX;
+    panYRef.current = panY;
+  }, [zoom, panX, panY]);
 
   const dragInfo = useRef<{
     nodeId: string;
@@ -61,6 +65,8 @@ export function useDragNode({ engineRef, bodiesRef, domRefs, zoom, panX, panY }:
         }
         info.hasCaptured = true;
 
+        // Temporarily make the body static during drag to disable gravity/forces
+        Matter.Body.setStatic(body, true);
         Matter.Body.setVelocity(body, { x: 0, y: 0 });
         Matter.Body.setAngularVelocity(body, 0);
       }
@@ -82,8 +88,6 @@ export function useDragNode({ engineRef, bodiesRef, domRefs, zoom, panX, panY }:
       if (info.velocities.length > 5) info.velocities.shift();
 
       Matter.Body.setPosition(body, { x: newX, y: newY });
-      // Low-weight velocity so body nudges other objects while dragging
-      Matter.Body.setVelocity(body, { x: instantVx * 0.5, y: instantVy * 0.5 });
 
       info.lastTime = currentTime;
       info.lastX = newX;
@@ -98,17 +102,26 @@ export function useDragNode({ engineRef, bodiesRef, domRefs, zoom, panX, panY }:
       const body = bodiesRef.current.get(info.nodeId);
 
       if (body && info.hasCaptured) {
-        const count = info.velocities.length;
-        let avgVx = 0, avgVy = 0;
-        if (count > 0) {
-          const sum = info.velocities.reduce((acc, v) => ({ x: acc.x + v.x, y: acc.y + v.y }), { x: 0, y: 0 });
-          avgVx = sum.x / count;
-          avgVy = sum.y / count;
+        // Restore dynamic status unless the node is pinned
+        const nodes = useGraviStore.getState().nodes;
+        const nodeMeta = nodes.find(n => n.id === info.nodeId);
+        const isPinned = nodeMeta?.isPinned || false;
+
+        if (!isPinned) {
+          Matter.Body.setStatic(body, false);
+          
+          const count = info.velocities.length;
+          let avgVx = 0, avgVy = 0;
+          if (count > 0) {
+            const sum = info.velocities.reduce((acc, v) => ({ x: acc.x + v.x, y: acc.y + v.y }), { x: 0, y: 0 });
+            avgVx = sum.x / count;
+            avgVy = sum.y / count;
+          }
+          Matter.Body.setVelocity(body, {
+            x: Math.min(Math.max(avgVx, -15), 15),
+            y: Math.min(Math.max(avgVy, -15), 15),
+          });
         }
-        Matter.Body.setVelocity(body, {
-          x: Math.min(Math.max(avgVx, -15), 15),
-          y: Math.min(Math.max(avgVy, -15), 15),
-        });
       }
 
       if (info.captureEl && info.hasCaptured) {

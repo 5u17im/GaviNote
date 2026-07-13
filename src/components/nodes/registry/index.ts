@@ -6,6 +6,12 @@ export const CATEGORY_INFO: Record<NodeCategory, {
   glowColor: string;
   icon: string;
 }> = {
+  central: {
+    label: 'Idea Central',
+    color: '#00FF87',
+    glowColor: 'rgba(0, 255, 135, 0.4)',
+    icon: '🪐',
+  },
   idea: {
     label: 'Idea',
     color: '#00E5FF', // Cian
@@ -28,6 +34,6 @@ export const CATEGORY_INFO: Record<NodeCategory, {
     label: 'Alerta',
     color: '#FF5252', // Coral
     glowColor: 'rgba(255, 82, 82, 0.4)',
-    icon: '🗑️',
+    icon: '🚨',
   },
 };

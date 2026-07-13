@@ -10,14 +10,60 @@ interface UsePhysicsSyncProps {
   domRefs: React.MutableRefObject<Map<string, HTMLElement>>;
   nodes: NodeMeta[];
   connections: Connection[];
+  zoom: number;
+  panX: number;
+  panY: number;
 }
 
-export function usePhysicsSync({ engineRef, bodiesRef, domRefs, nodes, connections }: UsePhysicsSyncProps) {
+const BASE_COLORS = {
+  neutra: '#64748B',
+  apoyo: '#059669',
+  conflicto: '#DC2626',
+};
+
+const TENSE_COLOR = '#FF3E3E'; // Bright neon red
+
+// Simple hex color interpolator
+function interpolateColor(color1: string, color2: string, factor: number) {
+  const r1 = parseInt(color1.substring(1, 3), 16);
+  const g1 = parseInt(color1.substring(3, 5), 16);
+  const b1 = parseInt(color1.substring(5, 7), 16);
+
+  const r2 = parseInt(color2.substring(1, 3), 16);
+  const g2 = parseInt(color2.substring(3, 5), 16);
+  const b2 = parseInt(color2.substring(5, 7), 16);
+
+  const r = Math.round(r1 + factor * (r2 - r1));
+  const g = Math.round(g1 + factor * (g2 - g1));
+  const b = Math.round(b1 + factor * (b2 - b1));
+
+  return `#${r.toString(16).padStart(2, '0')}${g.toString(16).padStart(2, '0')}${b.toString(16).padStart(2, '0')}`;
+}
+
+export function usePhysicsSync({ 
+  engineRef, 
+  bodiesRef, 
+  domRefs, 
+  nodes, 
+  connections,
+  zoom,
+  panX,
+  panY
+}: UsePhysicsSyncProps) {
   // Keep stable refs so the RAF loop always has fresh data without restarting
   const nodesRef = useRef(nodes);
   const connectionsRef = useRef(connections);
-  nodesRef.current = nodes;
-  connectionsRef.current = connections;
+  const zoomRef = useRef(zoom);
+  const panXRef = useRef(panX);
+  const panYRef = useRef(panY);
+
+  useEffect(() => {
+    nodesRef.current = nodes;
+    connectionsRef.current = connections;
+    zoomRef.current = zoom;
+    panXRef.current = panX;
+    panYRef.current = panY;
+  }, [nodes, connections, zoom, panX, panY]);
 
   useEffect(() => {
     const engine = engineRef.current;
@@ -37,12 +83,43 @@ export function usePhysicsSync({ engineRef, bodiesRef, domRefs, nodes, connectio
         if (!domElement) continue;
         const nodeMeta = currentNodes.find((n) => n.id === id);
         if (!nodeMeta) continue;
+
+        // Use nodeMeta dimensions if available, fallback to category defaults
         const config = CATEGORY_PHYSICS[nodeMeta.category];
-        const width = config?.width ?? 260;
-        const height = config?.height ?? 120;
+        const width = nodeMeta.width ?? config?.width ?? 260;
+        const height = nodeMeta.height ?? config?.height ?? 120;
         const x = body.position.x - width / 2;
         const y = body.position.y - height / 2;
-        domElement.style.transform = `translate3d(${x}px, ${y}px, 0) rotate(${body.angle}rad)`;
+
+        if (nodeMeta.isDeleting) {
+          // Calculate vortex world position dynamically
+          const cx = window.innerWidth / 2;
+          const cy = window.innerHeight / 2;
+          const currentZoom = zoomRef.current;
+          const currentPanX = panXRef.current;
+          const currentPanY = panYRef.current;
+
+          const vortexWorldX = (window.innerWidth - 80 - cx - currentPanX) / currentZoom;
+          const vortexWorldY = (window.innerHeight - 80 - cy - currentPanY) / currentZoom;
+
+          const dx = vortexWorldX - body.position.x;
+          const dy = vortexWorldY - body.position.y;
+          const distance = Math.sqrt(dx * dx + dy * dy);
+          const pullAngle = Math.atan2(dy, dx);
+
+          // Normalize t from 1.0 (at 350px distance) to 0.0 (at center)
+          const t = Math.min(1.0, distance / 350);
+
+          // Spaghettification stretching: long on pull axis (X), narrow on perpendicular (Y)
+          const scaleX = (1.0 + (1.0 - t) * 1.8) * t;
+          const scaleY = (t * 0.35) * t;
+
+          domElement.style.transform = `translate3d(${x}px, ${y}px, 0) rotate(${pullAngle}rad) scale(${scaleX}, ${scaleY})`;
+          domElement.style.opacity = `${Math.min(1.0, distance / 120)}`; // Fade out close to singularity
+        } else {
+          domElement.style.transform = `translate3d(${x}px, ${y}px, 0) rotate(${body.angle}rad)`;
+          domElement.style.opacity = '1';
+        }
       }
 
       // 2. Sync SVG connection paths — same frame, same body positions
@@ -58,10 +135,31 @@ export function usePhysicsSync({ engineRef, bodiesRef, domRefs, nodes, connectio
           targetBody.position.y
         );
 
+        const dx = targetBody.position.x - sourceBody.position.x;
+        const dy = targetBody.position.y - sourceBody.position.y;
+        const distance = Math.sqrt(dx * dx + dy * dy);
+
+        // Elastic tension calculations (rest length of spring is 260px)
+        const ratio = distance / 260;
+        const tension = Math.min(1.0, Math.max(0.0, (ratio - 1.0) / 1.5));
+
+        const baseColor = BASE_COLORS[conn.type] || BASE_COLORS.neutra;
+        const currentColor = tension > 0 ? interpolateColor(baseColor, TENSE_COLOR, tension) : baseColor;
+
+        const baseWidth = conn.type === 'apoyo' ? 3 : 2;
+        const currentWidth = Math.max(0.8, baseWidth - tension * 1.2);
+
         const pathEl = document.getElementById(`path-${conn.id}`);
         const thickEl = document.getElementById(`thick-${conn.id}`);
-        if (pathEl) pathEl.setAttribute('d', path);
-        if (thickEl) thickEl.setAttribute('d', path);
+        
+        if (pathEl) {
+          pathEl.setAttribute('d', path);
+          pathEl.setAttribute('stroke', currentColor);
+          pathEl.setAttribute('stroke-width', currentWidth.toString());
+        }
+        if (thickEl) {
+          thickEl.setAttribute('d', path);
+        }
       });
 
       rafId = requestAnimationFrame(syncPositions);
@@ -72,6 +170,5 @@ export function usePhysicsSync({ engineRef, bodiesRef, domRefs, nodes, connectio
     return () => {
       if (rafId !== null) cancelAnimationFrame(rafId);
     };
-    // Only restart if bodiesRef/domRefs/engineRef identity changes (i.e., never in practice)
   }, [engineRef, bodiesRef, domRefs]);
 }

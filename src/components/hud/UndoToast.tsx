@@ -20,7 +20,7 @@ export function UndoToast() {
 
   return (
     <div 
-      className="fixed bottom-6 left-6 z-50 flex flex-col gap-2 rounded-xl border border-[#FF5252]/20 bg-[#0F1322]/90 p-4 shadow-2xl backdrop-blur-md transition-all duration-300 w-80 animate-in slide-in-from-bottom-5"
+      className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 flex flex-col gap-2 rounded-xl border border-[#FF5252]/20 bg-[#0F1322]/90 p-4 shadow-2xl backdrop-blur-md transition-all duration-300 w-80 animate-in slide-in-from-bottom-5"
       style={{ boxShadow: '0 8px 32px 0 rgba(255, 82, 82, 0.08)' }}
     >
       <style dangerouslySetInnerHTML={{ __html: `

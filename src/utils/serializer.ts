@@ -1,4 +1,5 @@
-import { NodeMeta, Connection } from '../types/node.types';
+import { NodeMeta, Connection, NodeCategory, ConnectionType } from '../types/node.types';
+
 
 export function exportStateToJSON(nodes: NodeMeta[], connections: Connection[]) {
   try {
@@ -49,26 +50,32 @@ export function importStateFromJSON(
       }
 
       // Format loaded nodes with fresh createdAt timestamps to prevent issues
-      const loadedNodes: NodeMeta[] = data.nodes.map((node: any) => ({
-        id: node.id || `node-${Math.random().toString(36).substr(2, 9)}`,
-        title: node.title || '',
-        content: node.content || '',
-        tags: Array.isArray(node.tags) ? node.tags : [],
-        category: node.category || 'idea',
-        initialX: typeof node.initialX === 'number' ? node.initialX : 0,
-        initialY: typeof node.initialY === 'number' ? node.initialY : 0,
-        width: typeof node.width === 'number' ? node.width : 260,
-        height: typeof node.height === 'number' ? node.height : 120,
-        createdAt: node.createdAt || Date.now(),
-      }));
+      const loadedNodes: NodeMeta[] = data.nodes.map((node: unknown) => {
+        const n = node as Record<string, unknown>;
+        return {
+          id: typeof n.id === 'string' ? n.id : `node-${Math.random().toString(36).substr(2, 9)}`,
+          title: typeof n.title === 'string' ? n.title : '',
+          content: typeof n.content === 'string' ? n.content : '',
+          tags: Array.isArray(n.tags) ? (n.tags as string[]) : [],
+          category: (typeof n.category === 'string' ? n.category : 'idea') as NodeCategory,
+          initialX: typeof n.initialX === 'number' ? n.initialX : 0,
+          initialY: typeof n.initialY === 'number' ? n.initialY : 0,
+          width: typeof n.width === 'number' ? n.width : 260,
+          height: typeof n.height === 'number' ? n.height : 120,
+          createdAt: typeof n.createdAt === 'number' ? n.createdAt : Date.now(),
+        };
+      });
 
       const loadedConnections: Connection[] = Array.isArray(data.connections)
-        ? data.connections.map((c: any) => ({
-            id: c.id || `conn-${Math.random().toString(36).substr(2, 9)}`,
-            sourceId: c.sourceId,
-            targetId: c.targetId,
-            type: c.type || 'neutra',
-          }))
+        ? data.connections.map((c: unknown) => {
+            const conn = c as Record<string, unknown>;
+            return {
+              id: typeof conn.id === 'string' ? conn.id : `conn-${Math.random().toString(36).substr(2, 9)}`,
+              sourceId: typeof conn.sourceId === 'string' ? conn.sourceId : '',
+              targetId: typeof conn.targetId === 'string' ? conn.targetId : '',
+              type: (typeof conn.type === 'string' ? conn.type : 'neutra') as ConnectionType,
+            };
+          })
         : [];
 
       onLoad(loadedNodes, loadedConnections);

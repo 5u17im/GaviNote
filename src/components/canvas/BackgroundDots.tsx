@@ -81,10 +81,10 @@ export function BackgroundDots({ zoom, panX, panY }: BackgroundDotsProps) {
       const baseGap = 50; // space between dots
       const step = baseGap * zoom;
 
-      // Calculate starting offsets based on camera panning & zoom
-      let startX = (panX * zoom) % step;
+      // Calculate starting offsets based on camera panning & zoom, anchored at screen center
+      let startX = (cx + panX) % step;
       if (startX < 0) startX += step;
-      let startY = (panY * zoom) % step;
+      let startY = (cy + panY) % step;
       if (startY < 0) startY += step;
 
       const mouseX = mouseRef.current.x;

@@ -8,6 +8,13 @@ export const CATEGORY_PHYSICS: Record<NodeCategory, {
   width: number;
   height: number;
 }> = {
+  central: {
+    mass: 2.5,
+    frictionAir: 0.02,
+    restitution: 0.1,
+    width: 280,
+    height: 130,
+  },
   idea: {
     mass: 1.0,
     frictionAir: 0.01,
@@ -64,7 +71,7 @@ export function createNodeBody(
   const body = Matter.Bodies.rectangle(x, y, w, h, options);
   
   // Store dimensions inside userData for dynamic scaling detection
-  (body as any).userData = { width: w, height: h };
+  (body as Matter.Body & { userData: { width: number; height: number } }).userData = { width: w, height: h };
 
   // Matter.js automatically overrides mass based on area/density unless we set it after creation
   Matter.Body.setMass(body, config.mass);

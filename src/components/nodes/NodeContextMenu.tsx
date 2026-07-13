@@ -3,7 +3,7 @@
 import React, { useEffect, useRef } from 'react';
 import { NodeCategory } from '../../types/node.types';
 import { CATEGORY_INFO } from './registry';
-import { Edit2, Trash2, Tag } from 'lucide-react';
+import { Edit2, Trash2, Tag, Pin } from 'lucide-react';
 
 interface NodeContextMenuProps {
   x: number;
@@ -12,6 +12,8 @@ interface NodeContextMenuProps {
   onEdit: () => void;
   onDelete: () => void;
   onChangeCategory: (category: NodeCategory) => void;
+  isPinned: boolean;
+  onTogglePin: () => void;
 }
 
 export function NodeContextMenu({
@@ -21,6 +23,8 @@ export function NodeContextMenu({
   onEdit,
   onDelete,
   onChangeCategory,
+  isPinned,
+  onTogglePin,
 }: NodeContextMenuProps) {
   const menuRef = useRef<HTMLDivElement | null>(null);
 
@@ -64,6 +68,23 @@ export function NodeContextMenu({
           <div className="flex items-center gap-2.5">
             <Edit2 size={12} className="text-neutral-500 group-hover:text-neutral-300 transition-colors" />
             <span>Editar Contenido</span>
+          </div>
+        </button>
+
+        {/* Toggle Pin / Anchor */}
+        <button
+          onClick={() => {
+            onTogglePin();
+            onClose();
+          }}
+          className="w-full flex items-center justify-between px-3 py-2 text-xs rounded-sm hover:bg-neutral-800/60 transition-colors cursor-pointer group"
+        >
+          <div className="flex items-center gap-2.5">
+            <Pin 
+              size={12} 
+              className={isPinned ? "text-amber-500 fill-amber-500" : "text-neutral-500 group-hover:text-neutral-300 transition-colors"} 
+            />
+            <span>{isPinned ? 'Liberar Posición' : 'Fijar Posición'}</span>
           </div>
         </button>
       </div>

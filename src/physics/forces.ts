@@ -21,6 +21,9 @@ export function applyMagneticForces(
       const nodeA = nodes[i];
       const nodeB = nodes[j];
 
+      // Skip deleting nodes
+      if (nodeA.isDeleting || nodeB.isDeleting) continue;
+
       // Check if they share any tags
       const sharedTags = nodeA.tags.some(tag => nodeB.tags.includes(tag));
       
@@ -28,9 +31,8 @@ export function applyMagneticForces(
       const bodyB = bodies.get(nodeB.id);
       if (!bodyA || !bodyB) continue;
 
-      // Skip forces if either body is currently being dragged
-      // In our drag hook, dragging body moves directly. We don't want magnetic forces adding noise
-      if (bodyA.isStatic || bodyB.isStatic) continue;
+      // Skip if both are static
+      if (bodyA.isStatic && bodyB.isStatic) continue;
 
       const dx = bodyB.position.x - bodyA.position.x;
       const dy = bodyB.position.y - bodyA.position.y;
@@ -44,19 +46,80 @@ export function applyMagneticForces(
         const fx = (dx / distance) * forceMagnitude;
         const fy = (dy / distance) * forceMagnitude;
 
-        Matter.Body.applyForce(bodyA, bodyA.position, { x: -fx, y: -fy });
-        Matter.Body.applyForce(bodyB, bodyB.position, { x: fx, y: fy });
+        if (!bodyA.isStatic) {
+          Matter.Body.applyForce(bodyA, bodyA.position, { x: -fx, y: -fy });
+        }
+        if (!bodyB.isStatic) {
+          Matter.Body.applyForce(bodyB, bodyB.position, { x: fx, y: fy });
+        }
       }
       
       // 2. Attraction (Only active if they share tags)
       else if (sharedTags && distance < ATTRACTION_DISTANCE) {
-        const forceMagnitude = (distance / ATTRACTION_DISTANCE) * attractionStrength;
+        // Central ideas act as gravitational wells: 4x stronger attraction
+        const isAOrBCentral = nodeA.category === 'central' || nodeB.category === 'central';
+        const currentAttractionStrength = isAOrBCentral ? attractionStrength * 4 : attractionStrength;
+
+        const forceMagnitude = (distance / ATTRACTION_DISTANCE) * currentAttractionStrength;
         const fx = (dx / distance) * forceMagnitude;
         const fy = (dy / distance) * forceMagnitude;
 
-        Matter.Body.applyForce(bodyA, bodyA.position, { x: fx, y: fy });
-        Matter.Body.applyForce(bodyB, bodyB.position, { x: -fx, y: -fy });
+        if (!bodyA.isStatic) {
+          Matter.Body.applyForce(bodyA, bodyA.position, { x: fx, y: fy });
+        }
+        if (!bodyB.isStatic) {
+          Matter.Body.applyForce(bodyB, bodyB.position, { x: -fx, y: -fy });
+        }
       }
     }
   }
+}
+
+export function applyVortexSuction(
+  bodies: Map<string, Matter.Body>,
+  nodes: NodeMeta[],
+  vortexWorldPos: { x: number; y: number },
+  onReachVortex: (id: string) => void
+) {
+  nodes.forEach((node) => {
+    if (!node.isDeleting) return;
+
+    const body = bodies.get(node.id);
+    if (!body) return;
+
+    // Turn off collisions to slide cleanly into the black hole
+    if (body.collisionFilter.mask !== 0) {
+      body.collisionFilter.mask = 0;
+    }
+
+    const dx = vortexWorldPos.x - body.position.x;
+    const dy = vortexWorldPos.y - body.position.y;
+    const distance = Math.sqrt(dx * dx + dy * dy);
+
+    if (distance < 45) {
+      // Singularity reached
+      onReachVortex(node.id);
+      return;
+    }
+
+    // 1. Suction pull force
+    const pullStrength = 0.0006;
+    const fx = (dx / distance) * pullStrength;
+    const fy = (dy / distance) * pullStrength;
+
+    // 2. Spiral tangential force (whirlpool effect)
+    const spiralStrength = 0.00045;
+    const sx = (-dy / distance) * spiralStrength;
+    const sy = (dx / distance) * spiralStrength;
+
+    // Ensure it can move
+    if (body.isStatic) {
+      Matter.Body.setStatic(body, false);
+    }
+
+    Matter.Body.applyForce(body, body.position, {
+      x: fx + sx,
+      y: fy + sy,
+    });
+  });
 }

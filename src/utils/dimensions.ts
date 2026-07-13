@@ -2,6 +2,7 @@ import { NodeCategory } from '../types/node.types';
 
 // Standard base physics configuration sizes as fallbacks
 export const CATEGORY_BASE_SIZES: Record<NodeCategory, { width: number; height: number }> = {
+  central: { width: 260, height: 120 },
   idea: { width: 240, height: 110 },
   tarea: { width: 240, height: 110 },
   referencia: { width: 240, height: 110 },

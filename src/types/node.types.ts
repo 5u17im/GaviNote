@@ -1,4 +1,4 @@
-export type NodeCategory = 'idea' | 'tarea' | 'referencia' | 'alerta';
+export type NodeCategory = 'central' | 'idea' | 'tarea' | 'referencia' | 'alerta';
 
 export interface NodeMeta {
   id: string;
@@ -11,6 +11,8 @@ export interface NodeMeta {
   width: number;
   height: number;
   createdAt: number;
+  isPinned?: boolean;
+  isDeleting?: boolean;
 }
 
 export type ConnectionType = 'neutra' | 'apoyo' | 'conflicto';

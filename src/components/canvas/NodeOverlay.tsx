@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { NodeMeta, NodeCategory } from '../../types/node.types';
+import { NodeMeta } from '../../types/node.types';
 import { NodeCard } from '../nodes/NodeCard';
 
 interface NodeOverlayProps {
@@ -9,8 +9,6 @@ interface NodeOverlayProps {
   selectedId: string | null;
   onSelect: (id: string | null) => void;
   onUpdate: (id: string, title: string, content: string, tags: string[], width: number, height: number) => void;
-  onDelete: (id: string) => void;
-  onChangeCategory: (id: string, category: NodeCategory) => void;
   onDragStart: (e: React.PointerEvent<HTMLDivElement>, id: string) => void;
   onContextMenu: (id: string, x: number, y: number) => void;
   domRefs: React.MutableRefObject<Map<string, HTMLElement>>;
@@ -21,8 +19,6 @@ export function NodeOverlay({
   selectedId,
   onSelect,
   onUpdate,
-  onDelete,
-  onChangeCategory,
   onDragStart,
   onContextMenu,
   domRefs,
@@ -36,8 +32,6 @@ export function NodeOverlay({
           isSelected={selectedId === node.id}
           onSelect={() => onSelect(node.id)}
           onUpdate={onUpdate}
-          onDelete={onDelete}
-          onChangeCategory={onChangeCategory}
           onDragStart={onDragStart}
           onContextMenu={(x, y) => onContextMenu(node.id, x, y)}
           domRef={(el) => {

@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { NodeMeta, NodeCategory } from '../../types/node.types';
+import { NodeMeta } from '../../types/node.types';
 import { CATEGORY_INFO } from './registry';
 import { NodeEditor } from './NodeEditor';
 import { calculateOptimalDimensions } from '../../utils/dimensions';
@@ -11,8 +11,6 @@ interface NodeCardProps {
   isSelected: boolean;
   onSelect: () => void;
   onUpdate: (id: string, title: string, content: string, tags: string[], width: number, height: number) => void;
-  onDelete: (id: string) => void;
-  onChangeCategory: (id: string, category: NodeCategory) => void;
   onDragStart: (e: React.PointerEvent<HTMLDivElement>, id: string) => void;
   onContextMenu: (x: number, y: number) => void;
   domRef: (el: HTMLDivElement | null) => void;
@@ -23,8 +21,6 @@ export function NodeCard({
   isSelected,
   onSelect,
   onUpdate,
-  onDelete,
-  onChangeCategory,
   onDragStart,
   onContextMenu,
   domRef,
@@ -117,6 +113,9 @@ export function NodeCard({
               >
                 {info.label}
               </span>
+              {node.isPinned && (
+                <span className="text-[9px] animate-pulse" title="Fijado en el espacio">📌</span>
+              )}
             </div>
             <span className="text-[9px] text-white/30 font-mono">
               {new Date(node.createdAt).toLocaleTimeString('es-ES', {

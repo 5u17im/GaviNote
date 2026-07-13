@@ -8,12 +8,14 @@ interface SVGConnectionLayerProps {
   connections: Connection[];
   drawingState: ConnectionDrawState | null;
   onCycleConnection: (id: string) => void;
+  onRemoveConnection: (id: string) => void;
 }
 
 export function SVGConnectionLayer({
   connections,
   drawingState,
   onCycleConnection,
+  onRemoveConnection,
 }: SVGConnectionLayerProps) {
   
   // Style mappings based on connection type
@@ -65,6 +67,11 @@ export function SVGConnectionLayer({
               onClick={(e) => {
                 e.stopPropagation();
                 onCycleConnection(conn.id);
+              }}
+              onContextMenu={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                onRemoveConnection(conn.id);
               }}
             />
             {/* Visual visible path */}

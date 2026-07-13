@@ -10,6 +10,7 @@ import { useMagneticForces } from '../../hooks/useMagneticForces';
 import { useConnectionDraw } from '../../hooks/useConnectionDraw';
 import { createNodeBody, destroyNodeBody, CATEGORY_PHYSICS } from '../../physics/bodies';
 import { createSpringConstraint, destroyConstraint } from '../../physics/constraints';
+import { applyVortexSuction } from '../../physics/forces';
 import { INITIAL_DEMO_NODES, INITIAL_DEMO_CONNECTIONS } from './DemoNodes';
 import { BackgroundDots } from './BackgroundDots';
 import { NodeOverlay } from './NodeOverlay';
@@ -34,6 +35,7 @@ export function PhysicsCanvas() {
     addNode,
     updateNode,
     removeNode,
+    removeConnection,
     selectNode,
     addConnection,
     cycleConnection,
@@ -44,6 +46,15 @@ export function PhysicsCanvas() {
 
   const { zoom, panX, panY, gravity, magnetStrength } = physicsConfig;
 
+  // Screen coordinates to world coordinates conversion helper
+  const screenToWorld = React.useCallback((clientX: number, clientY: number) => {
+    const cx = window.innerWidth / 2;
+    const cy = window.innerHeight / 2;
+    const worldX = (clientX - cx - panX) / zoom;
+    const worldY = (clientY - cy - panY) / zoom;
+    return { x: worldX, y: worldY };
+  }, [panX, panY, zoom]);
+
   // Initialize Matter.js Engine
   const engineRef = usePhysicsEngine(gravity);
   
@@ -53,6 +64,17 @@ export function PhysicsCanvas() {
   const constraintsRef = useRef<Map<string, Matter.Constraint>>(new Map());
   // Registry of nodeId -> DOM Element
   const domRefs = useRef<Map<string, HTMLElement>>(new Map());
+
+  // Hook for pointer drag handler — move/up events are now registered on window
+  // directly inside the hook to prevent the "wrong card moves" bug
+  const dragNode = useDragNode({
+    engineRef,
+    bodiesRef,
+    domRefs,
+    zoom,
+    panX,
+    panY,
+  });
 
   // Mouse drag pan state
   const panDragRef = useRef<{
@@ -81,10 +103,15 @@ export function PhysicsCanvas() {
         const parsed = JSON.parse(saved);
         if (Array.isArray(parsed.nodes)) {
           // Auto-adjust dimensions of stored nodes to prevent text clipping
-          const updatedNodes = parsed.nodes.map((node: any) => {
-            const dims = calculateOptimalDimensions(node.title, node.content, node.tags || []);
+          const updatedNodes = parsed.nodes.map((node: unknown) => {
+            const n = node as Record<string, unknown>;
+            const dims = calculateOptimalDimensions(
+              typeof n.title === 'string' ? n.title : '',
+              typeof n.content === 'string' ? n.content : '',
+              Array.isArray(n.tags) ? (n.tags as string[]) : []
+            );
             return {
-              ...node,
+              ...n,
               width: dims.width,
               height: dims.height,
             };
@@ -150,14 +177,25 @@ export function PhysicsCanvas() {
           node.width,
           node.height
         );
+        if (node.isPinned) {
+          Matter.Body.setStatic(body, true);
+        }
         currentBodies.set(node.id, body);
       } else {
         const body = currentBodies.get(node.id)!;
-        const anyBody = body as any;
+        const bodyWithData = body as Matter.Body & { userData: { width: number; height: number } };
         
+        // Sync static state dynamically (except when dragging)
+        const isPinned = node.isPinned || false;
+        if (!dragNode.isDragging(node.id)) {
+          if (body.isStatic !== isPinned) {
+            Matter.Body.setStatic(body, isPinned);
+          }
+        }
+
         // Dynamic scaling: If node dimensions changed in React state, scale the Matter.js body
-        const currentW = anyBody.userData?.width ?? 260;
-        const currentH = anyBody.userData?.height ?? 120;
+        const currentW = bodyWithData.userData?.width ?? 260;
+        const currentH = bodyWithData.userData?.height ?? 120;
         const targetW = node.width ?? 260;
         const targetH = node.height ?? 120;
 
@@ -165,7 +203,7 @@ export function PhysicsCanvas() {
           const scaleX = targetW / currentW;
           const scaleY = targetH / currentH;
           Matter.Body.scale(body, scaleX, scaleY);
-          anyBody.userData = { width: targetW, height: targetH };
+          bodyWithData.userData = { width: targetW, height: targetH };
         }
 
         // Update physical properties dynamically if category changed
@@ -188,7 +226,7 @@ export function PhysicsCanvas() {
         domRefs.current.delete(id);
       }
     }
-  }, [nodes, engineRef]);
+  }, [nodes, engineRef, dragNode]);
 
   // Sync Matter.js Constraints with Zustand connections list
   useEffect(() => {
@@ -304,6 +342,9 @@ export function PhysicsCanvas() {
     domRefs,
     nodes,
     connections,
+    zoom,
+    panX,
+    panY,
   });
 
   // Hook for magnetic attraction/repulsión between nodes
@@ -314,14 +355,35 @@ export function PhysicsCanvas() {
     magnetStrength,
   });
 
-  // Screen coordinates to world coordinates conversion helper
-  const screenToWorld = (clientX: number, clientY: number) => {
-    const cx = window.innerWidth / 2;
-    const cy = window.innerHeight / 2;
-    const worldX = (clientX - cx - panX) / zoom;
-    const worldY = (clientY - cy - panY) / zoom;
-    return { x: worldX, y: worldY };
-  };
+  // Hook for vortex suction toward the black hole
+  useEffect(() => {
+    const engine = engineRef.current;
+    if (!engine) return;
+
+    const handleTick = () => {
+      const vx = window.innerWidth - 80;
+      const vy = window.innerHeight - 80;
+      const vortexWorld = screenToWorld(vx, vy);
+
+      applyVortexSuction(bodiesRef.current, nodes, vortexWorld, (nodeId) => {
+        // Trigger particle explosion at the center of the vortex
+        const body = bodiesRef.current.get(nodeId);
+        const node = nodes.find((n) => n.id === nodeId);
+        if (body && node) {
+          const color = CATEGORY_INFO[node.category]?.color || '#00E5FF';
+          triggerDisintegration(body.position.x, body.position.y, color);
+        }
+        removeNode(nodeId);
+      });
+    };
+
+    Matter.Events.on(engine, 'afterUpdate', handleTick);
+    return () => {
+      Matter.Events.off(engine, 'afterUpdate', handleTick);
+    };
+  }, [engineRef, nodes, removeNode, panX, panY, zoom, screenToWorld]);
+
+
 
   // Hook for connection drawing (Shift + Drag)
   const connDraw = useConnectionDraw({
@@ -331,16 +393,7 @@ export function PhysicsCanvas() {
     screenToWorld,
   });
 
-  // Hook for pointer drag handler — move/up events are now registered on window
-  // directly inside the hook to prevent the "wrong card moves" bug
-  const dragNode = useDragNode({
-    engineRef,
-    bodiesRef,
-    domRefs,
-    zoom,
-    panX,
-    panY,
-  });
+
 
   // Spacebar key listeners for Panning
   useEffect(() => {
@@ -370,6 +423,40 @@ export function PhysicsCanvas() {
     if (e.target !== containerRef.current) return;
 
     const { x, y } = screenToWorld(e.clientX, e.clientY);
+
+    // Shockwave Pulse on Alt + Double Click
+    if (e.altKey) {
+      const bodies = Array.from(bodiesRef.current.values());
+      bodies.forEach((body) => {
+        if (body.isStatic) return;
+
+        const dx = body.position.x - x;
+        const dy = body.position.y - y;
+        const distance = Math.sqrt(dx * dx + dy * dy);
+
+        if (distance === 0) return;
+
+        const maxDist = 600; // range of shockwave
+        if (distance < maxDist) {
+          const forceFactor = 1 - distance / maxDist;
+          const forceMagnitude = forceFactor * 0.08; // shockwave strength
+          const fx = (dx / distance) * forceMagnitude;
+          const fy = (dy / distance) * forceMagnitude;
+
+          Matter.Body.applyForce(body, body.position, { x: fx, y: fy });
+        }
+      });
+
+      // Visual pulse particles expanding in a ring
+      for (let i = 0; i < 36; i++) {
+        const angle = (i * 10 * Math.PI) / 180;
+        const px = x + Math.cos(angle) * 15;
+        const py = y + Math.sin(angle) * 15;
+        triggerDisintegration(px, py, '#00FF87');
+      }
+      return;
+    }
+
     const category = 'idea';
     const dims = calculateOptimalDimensions('', '', []); // Get dynamic initial dimensions
 
@@ -456,15 +543,7 @@ export function PhysicsCanvas() {
 
   // Safe wrapper for note removal that triggers particle disintegration
   const handleRemoveNode = (id: string) => {
-    const body = bodiesRef.current.get(id);
-    const node = nodes.find((n) => n.id === id);
-    
-    if (body && node) {
-      const color = CATEGORY_INFO[node.category]?.color || '#00E5FF';
-      triggerDisintegration(body.position.x, body.position.y, color);
-    }
-
-    removeNode(id);
+    updateNode(id, { isDeleting: true });
   };
 
   const cx = window.innerWidth / 2;
@@ -503,6 +582,7 @@ export function PhysicsCanvas() {
           connections={connections}
           drawingState={connDraw.drawingState}
           onCycleConnection={cycleConnection}
+          onRemoveConnection={removeConnection}
         />
 
         {/* Disintegration particles canvas layer */}
@@ -516,15 +596,6 @@ export function PhysicsCanvas() {
           onUpdate={(id, title, content, tags, width, height) => 
             updateNode(id, { title, content, tags, width, height })
           }
-          onDelete={handleRemoveNode} // Trigger particle explosion during delete
-          onChangeCategory={(id, cat) => {
-            const node = nodes.find(n => n.id === id);
-            if (node) {
-              // Recalculate dimensions for the new category to ensure fit
-              const dims = calculateOptimalDimensions(node.title, node.content, node.tags);
-              updateNode(id, { category: cat, width: dims.width, height: dims.height });
-            }
-          }}
           onDragStart={handleNodePointerDown}
           onContextMenu={(id, x, y) => setContextMenu({ nodeId: id, x, y })}
           domRefs={domRefs}
@@ -539,6 +610,25 @@ export function PhysicsCanvas() {
 
       {/* Undo deleted note Toast banner */}
       <UndoToast />
+
+      {/* Black Hole (Gravity Trash Vortex) UI */}
+      <div 
+        className="absolute bottom-6 right-6 z-30 w-16 h-16 rounded-full border border-[#00E5FF]/20 flex items-center justify-center pointer-events-none select-none"
+        style={{
+          background: 'radial-gradient(circle, rgba(0,0,0,0.95) 0%, rgba(11,15,25,0.7) 70%, rgba(0,229,255,0.05) 100%)',
+          boxShadow: '0 0 25px rgba(0, 229, 255, 0.15), inset 0 0 15px rgba(0, 229, 255, 0.2)',
+        }}
+      >
+        <div 
+          className="absolute w-12 h-12 rounded-full border-2 border-dashed border-[#00E5FF]/30 animate-spin"
+          style={{ animationDuration: '6s' }}
+        />
+        <div 
+          className="absolute w-8 h-8 rounded-full border border-dotted border-[#CE93D8]/40 animate-spin"
+          style={{ animationDuration: '3s', animationDirection: 'reverse' }}
+        />
+        <span className="absolute text-[8px] font-mono text-white/30 tracking-widest uppercase mt-0.5">Vortex</span>
+      </div>
 
       {/* Hoisted Context Menu at the screen root level (handles screen-space coords) */}
       {contextMenu && (
@@ -558,6 +648,18 @@ export function PhysicsCanvas() {
           onChangeCategory={(cat) => {
             updateNode(contextMenu.nodeId, { category: cat });
             setContextMenu(null);
+          }}
+          isPinned={nodes.find((n) => n.id === contextMenu.nodeId)?.isPinned || false}
+          onTogglePin={() => {
+            const node = nodes.find((n) => n.id === contextMenu.nodeId);
+            if (node) {
+              const nextPinned = !node.isPinned;
+              updateNode(contextMenu.nodeId, { isPinned: nextPinned });
+              const body = bodiesRef.current.get(contextMenu.nodeId);
+              if (body) {
+                Matter.Body.setStatic(body, nextPinned);
+              }
+            }
           }}
         />
       )}

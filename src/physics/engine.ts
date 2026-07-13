@@ -3,6 +3,9 @@ import Matter from 'matter-js';
 export function createPhysicsEngine(gravityY: number) {
   const engine = Matter.Engine.create();
   
+  // Disable sleeping to prevent connected nodes from losing collisions
+  engine.enableSleeping = false;
+  
   // Set gravity
   engine.gravity.x = 0;
   engine.gravity.y = gravityY;

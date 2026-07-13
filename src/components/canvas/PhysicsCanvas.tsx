@@ -271,6 +271,20 @@ export function PhysicsCanvas() {
         currentConstraints.delete(id);
       }
     }
+
+    // 3. Reset constraint length to 260px if neither node is pinned (unpinned self-healing)
+    for (const [id, constraint] of currentConstraints.entries()) {
+      const conn = connections.find(c => c.id === id);
+      if (conn && constraint.bodyA && constraint.bodyB) {
+        const nodeA = nodes.find(n => n.id === conn.sourceId);
+        const nodeB = nodes.find(n => n.id === conn.targetId);
+        const isAnyPinned = nodeA?.isPinned || nodeB?.isPinned || false;
+        
+        if (!isAnyPinned && constraint.length !== 260) {
+          constraint.length = 260;
+        }
+      }
+    }
   }, [connections, nodes, engineRef]);
 
   // Command Listener: Big Bang (applies radial forces)

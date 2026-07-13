@@ -141,13 +141,27 @@ export function useDragNode({ engineRef, bodiesRef, constraintsRef, domRefs, zoo
         const world = engine.world;
         constraintsRef.current.forEach((constraint) => {
           if (constraint.bodyA === body || constraint.bodyB === body) {
-            // Dynamically set spring length to the new dragged distance
-            // to allow nodes to stay at their new relative position without snapping back
-            if (constraint.bodyA && constraint.bodyB) {
-              const dx = constraint.bodyA.position.x - constraint.bodyB.position.x;
-              const dy = constraint.bodyA.position.y - constraint.bodyB.position.y;
-              const currentDist = Math.sqrt(dx * dx + dy * dy);
-              constraint.length = Math.max(80, currentDist);
+            const bodyA = constraint.bodyA;
+            const bodyB = constraint.bodyB;
+            if (bodyA && bodyB) {
+              const nodeA = nodes.find(n => n.id === bodyA.label);
+              const nodeB = nodes.find(n => n.id === bodyB.label);
+              const isAnyPinned = nodeA?.isPinned || nodeB?.isPinned || false;
+
+              if (isAnyPinned) {
+                // Dynamically set spring length to the new dragged distance to allow branches to stay at new positions
+                const dx = bodyA.position.x - bodyB.position.x;
+                const dy = bodyA.position.y - bodyB.position.y;
+                const currentDist = Math.sqrt(dx * dx + dy * dy);
+                constraint.length = Math.max(80, currentDist);
+              } else {
+                // Reset to standard spring length for dynamic nodes
+                constraint.length = 260;
+              }
+
+              // Wake up both bodies to ensure no collision loss
+              Matter.Sleeping.set(bodyA, false);
+              Matter.Sleeping.set(bodyB, false);
             }
 
             if (!Matter.Composite.allConstraints(world).includes(constraint)) {

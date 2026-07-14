@@ -1,6 +1,6 @@
 import { useEffect, useRef } from 'react';
 import Matter from 'matter-js';
-import { CATEGORY_PHYSICS, type NodeBody } from '../physics/bodies';
+import { CATEGORY_PHYSICS, sanitizeBody, type NodeBody } from '../physics/bodies';
 import { calcBezierPath } from '../utils/bezier';
 import { logError } from '../utils/logger';
 import type { NodeMeta, Connection } from '../types/node.types';
@@ -20,7 +20,11 @@ interface UsePhysicsSyncProps {
   zoom: number;
   panX: number;
   panY: number;
+  searchQuery: string;
 }
+
+// Extra px around the viewport before a card is culled — avoids pop-in when panning.
+const CULL_MARGIN = 200;
 
 const BASE_COLORS = {
   neutra: '#64748B',
@@ -56,7 +60,8 @@ export function usePhysicsSync({
   connections,
   zoom,
   panX,
-  panY
+  panY,
+  searchQuery
 }: UsePhysicsSyncProps) {
   // Keep stable refs so the RAF loop always has fresh data without restarting
   const nodesRef = useRef(nodes);
@@ -64,6 +69,8 @@ export function usePhysicsSync({
   const zoomRef = useRef(zoom);
   const panXRef = useRef(panX);
   const panYRef = useRef(panY);
+  // null = no active search; otherwise the set of node ids matching the query.
+  const matchIdsRef = useRef<Set<string> | null>(null);
 
   useEffect(() => {
     nodesRef.current = nodes;
@@ -71,7 +78,19 @@ export function usePhysicsSync({
     zoomRef.current = zoom;
     panXRef.current = panX;
     panYRef.current = panY;
-  }, [nodes, connections, zoom, panX, panY]);
+
+    const q = searchQuery.trim().toLowerCase();
+    if (!q) {
+      matchIdsRef.current = null;
+    } else {
+      const set = new Set<string>();
+      for (const n of nodes) {
+        const haystack = `${n.title} ${n.content} ${n.tags.join(' ')}`.toLowerCase();
+        if (haystack.includes(q)) set.add(n.id);
+      }
+      matchIdsRef.current = set;
+    }
+  }, [nodes, connections, zoom, panX, panY, searchQuery]);
 
   useEffect(() => {
     const engine = engineRef.current;
@@ -97,6 +116,10 @@ export function usePhysicsSync({
           const nodeMeta = nodeMap.get(id);
           if (!nodeMeta) continue;
 
+          // Last line of defense: repair any body whose state went non-finite so a
+          // single corrupted frame can't permanently brick a node.
+          sanitizeBody(body, nodeMeta.initialX, nodeMeta.initialY);
+
           // Self-healing: if body is static but node is not pinned (and not dragging), restore it to dynamic
           const isPinned = nodeMeta.isPinned || false;
           const isDragging = (body as NodeBody).isDragging || false;
@@ -110,6 +133,28 @@ export function usePhysicsSync({
           const height = nodeMeta.height ?? config?.height ?? 120;
           const x = body.position.x - width / 2;
           const y = body.position.y - height / 2;
+
+          // Viewport culling: skip DOM work for cards far outside the visible area.
+          // The expensive part is compositing many backdrop-blur layers, so hiding
+          // off-screen cards is a big win on large maps. Deleting cards animate
+          // toward the on-screen vortex, so they are never culled.
+          if (!nodeMeta.isDeleting) {
+            const cz = zoomRef.current;
+            const screenX = window.innerWidth / 2 + panXRef.current + body.position.x * cz;
+            const screenY = window.innerHeight / 2 + panYRef.current + body.position.y * cz;
+            const halfW = (width / 2) * cz + CULL_MARGIN;
+            const halfH = (height / 2) * cz + CULL_MARGIN;
+            const onScreen =
+              screenX + halfW > 0 &&
+              screenX - halfW < window.innerWidth &&
+              screenY + halfH > 0 &&
+              screenY - halfH < window.innerHeight;
+            if (!onScreen) {
+              if (domElement.style.display !== 'none') domElement.style.display = 'none';
+              continue;
+            }
+            if (domElement.style.display === 'none') domElement.style.display = '';
+          }
 
           if (nodeMeta.isDeleting) {
             // Calculate vortex world position dynamically
@@ -144,7 +189,9 @@ export function usePhysicsSync({
             domElement.style.opacity = `${Math.min(1.0, distance / 120)}`; // Fade out close to singularity
           } else {
             domElement.style.transform = `translate3d(${x}px, ${y}px, 0) rotate(${body.angle}rad)`;
-            domElement.style.opacity = '1';
+            // Search: dim cards that don't match the active query (null = no search).
+            const matches = matchIdsRef.current;
+            domElement.style.opacity = matches && !matches.has(id) ? '0.12' : '1';
           }
         }
 
@@ -189,10 +236,15 @@ export function usePhysicsSync({
           const baseWidth = conn.type === 'apoyo' ? 3 : 2;
           const currentWidth = Math.max(0.8, baseWidth - tension * 1.2);
           
+          // Search: dim connections unless both endpoints match the active query.
+          const matches = matchIdsRef.current;
+          const dimmed = matches ? !(matches.has(conn.sourceId) && matches.has(conn.targetId)) : false;
+
           if (pathEl) {
             pathEl.setAttribute('d', path);
             pathEl.setAttribute('stroke', currentColor);
             pathEl.setAttribute('stroke-width', currentWidth.toString());
+            pathEl.style.opacity = dimmed ? '0.1' : '1';
           }
           if (thickEl) {
             thickEl.setAttribute('d', path);

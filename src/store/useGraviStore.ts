@@ -23,6 +23,7 @@ export const useGraviStore = create<GraviStore>()((set, get, api) => ({
       connections: [],
       selectedId: null,
       backupDeleted: null,
+      searchQuery: '',
     });
   },
 
@@ -32,6 +33,7 @@ export const useGraviStore = create<GraviStore>()((set, get, api) => ({
       connections,
       selectedId: null,
       backupDeleted: null,
+      searchQuery: '',
     });
   },
 }));

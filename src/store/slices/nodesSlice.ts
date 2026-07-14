@@ -11,18 +11,21 @@ export interface NodesSlice {
   nodes: NodeMeta[];
   selectedId: string | null;
   backupDeleted: DeletedNodeBackup | null;
+  searchQuery: string;
 
   addNode: (node: Omit<NodeMeta, 'id' | 'createdAt'>) => string;
   updateNode: (id: string, patch: Partial<NodeMeta>) => void;
   removeNode: (id: string) => void;
   recoverNode: () => void;
   selectNode: (id: string | null) => void;
+  setSearchQuery: (query: string) => void;
 }
 
 export const createNodesSlice: StateCreator<GraviStore, [], [], NodesSlice> = (set, get) => ({
   nodes: [],
   selectedId: null,
   backupDeleted: null,
+  searchQuery: '',
 
   addNode: (nodeData) => {
     const id = `node-${Math.random().toString(36).slice(2, 11)}`;
@@ -77,5 +80,9 @@ export const createNodesSlice: StateCreator<GraviStore, [], [], NodesSlice> = (s
 
   selectNode: (id) => {
     set({ selectedId: id });
+  },
+
+  setSearchQuery: (query) => {
+    set({ searchQuery: query });
   },
 });

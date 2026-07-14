@@ -16,7 +16,8 @@ import {
   X,
   Plus,
   Sliders,
-  Info
+  Info,
+  Search
 } from 'lucide-react';
 
 export function HUDPanel() {
@@ -28,6 +29,8 @@ export function HUDPanel() {
     nodes,
     connections,
     physicsConfig,
+    searchQuery,
+    setSearchQuery,
     setGravity,
     setAirFriction,
     setMagnetStrength,
@@ -35,6 +38,13 @@ export function HUDPanel() {
     loadState,
     addNode,
   } = useGraviStore();
+
+  const trimmedQuery = searchQuery.trim().toLowerCase();
+  const matchCount = trimmedQuery
+    ? nodes.filter((n) =>
+        `${n.title} ${n.content} ${n.tags.join(' ')}`.toLowerCase().includes(trimmedQuery)
+      ).length
+    : 0;
 
   const { gravity, airFriction, magnetStrength, panX, panY, vortexGravity = 1.0 } = physicsConfig;
 
@@ -108,8 +118,37 @@ export function HUDPanel() {
 
   return (
     <>
+      {/* 0. Search / Filter (Top Left) */}
+      <div className="fixed top-10 left-10 z-40 pointer-events-auto">
+        <div className="flex items-center gap-2 rounded-md border border-[#222733] bg-[#0D0F17]/95 px-3 py-2 shadow-xl backdrop-blur-md focus-within:border-[#00E5FF]/40 transition-colors">
+          <Search size={14} aria-hidden="true" className="text-neutral-500 shrink-0" />
+          <input
+            type="text"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            placeholder="Buscar por título, contenido o tag…"
+            aria-label="Buscar notas por título, contenido o tag"
+            className="w-52 bg-transparent text-xs text-white placeholder:text-neutral-600 font-mono outline-none"
+          />
+          {searchQuery && (
+            <>
+              <span className="font-mono text-[10px] text-neutral-500 shrink-0 tabular-nums">
+                {matchCount}
+              </span>
+              <button
+                onClick={() => setSearchQuery('')}
+                aria-label="Limpiar búsqueda"
+                className="text-white/40 hover:text-white transition-colors cursor-pointer shrink-0"
+              >
+                <X size={13} aria-hidden="true" />
+              </button>
+            </>
+          )}
+        </div>
+      </div>
+
       {/* 1. Quick Floating Actions (Top Right) */}
-      <div className="absolute top-10 right-6 z-40 flex items-center gap-2 pointer-events-auto">
+      <div className="fixed top-10 right-6 z-40 flex items-center gap-2 pointer-events-auto">
         {/* Quick Add Node */}
         <button
           onClick={handleQuickAdd}
@@ -164,7 +203,7 @@ export function HUDPanel() {
           id="hud-settings-panel"
           role="region"
           aria-label="Telemetría física y guardado"
-          className="absolute top-28 right-6 z-40 w-80 rounded-md border border-[#222733] bg-[#0D0F17]/95 p-5 shadow-2xl shadow-black/80 backdrop-blur-md flex flex-col gap-4.5 animate-in slide-in-from-top-4 duration-200 pointer-events-auto"
+          className="fixed top-28 right-6 z-40 w-80 rounded-md border border-[#222733] bg-[#0D0F17]/95 p-5 shadow-2xl shadow-black/80 backdrop-blur-md flex flex-col gap-4.5 animate-in slide-in-from-top-4 duration-200 pointer-events-auto"
           style={{ maxHeight: 'calc(100dvh - 120px)', overflowY: 'auto' }}
         >
           {/* Header */}

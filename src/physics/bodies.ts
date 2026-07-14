@@ -92,3 +92,94 @@ export function createNodeBody(
 export function destroyNodeBody(world: Matter.World, body: Matter.Body) {
   Matter.Composite.remove(world, body);
 }
+
+type PhysicsProps = { mass: number; frictionAir: number; restitution: number };
+
+/**
+ * Sync a body's physical props (mass/friction/restitution) to its category config.
+ *
+ * CRITICAL: never call Matter.Body.setMass on a static body. Static bodies have
+ * mass = inertia = Infinity, and setMass computes `inertia / (mass / 6)` which is
+ * `Infinity / Infinity = NaN`. The NaN inverseInertia then leaks into the constraint
+ * solver and corrupts the position/angle of any connected body (frozen, no
+ * collisions, impossible to move or delete). Static bodies keep the mass/inertia
+ * that Matter set for them; the real values are restored from `_original` on unpin.
+ */
+export function syncBodyPhysics(body: Matter.Body, config: PhysicsProps | undefined) {
+  if (!config || body.isStatic) return;
+  if (body.mass !== config.mass) {
+    Matter.Body.setMass(body, config.mass);
+  }
+  body.frictionAir = config.frictionAir;
+  body.restitution = config.restitution;
+}
+
+/**
+ * Single source of truth for pinning a node's body. Toggling static state and
+ * zeroing/kicking velocity in one place avoids the scattered setStatic calls that
+ * previously drifted out of sync.
+ */
+export function setBodyPinned(body: Matter.Body, pinned: boolean) {
+  if (body.isStatic === pinned) return;
+  Matter.Body.setStatic(body, pinned);
+  if (pinned) {
+    Matter.Body.setVelocity(body, { x: 0, y: 0 });
+    Matter.Body.setAngularVelocity(body, 0);
+  } else {
+    // A tiny drift so an unpinned node doesn't look frozen/dead.
+    Matter.Body.setVelocity(body, {
+      x: (Math.random() - 0.5) * 1.5,
+      y: (Math.random() - 0.5) * 1.5,
+    });
+  }
+}
+
+/**
+ * Detect and repair a body whose simulation state became non-finite (NaN/Infinity).
+ * Acts as a last line of defense so a single corrupted frame can't permanently
+ * brick a node. Returns true when a repair was applied.
+ */
+export function sanitizeBody(body: Matter.Body, fallbackX: number, fallbackY: number): boolean {
+  const bad =
+    !Number.isFinite(body.position.x) ||
+    !Number.isFinite(body.position.y) ||
+    !Number.isFinite(body.angle) ||
+    !Number.isFinite(body.velocity.x) ||
+    !Number.isFinite(body.velocity.y);
+
+  if (!bad) return false;
+
+  const x = Number.isFinite(fallbackX) ? fallbackX : 0;
+  const y = Number.isFinite(fallbackY) ? fallbackY : 0;
+
+  // Matter.Body.setPosition/setAngle derive a delta from the *current* value, so
+  // they can't recover from NaN. Reset the internal scalars directly instead.
+  const internal = body as unknown as {
+    position: Matter.Vector;
+    positionPrev: Matter.Vector;
+    velocity: Matter.Vector;
+    force: Matter.Vector;
+    angle: number;
+    anglePrev: number;
+    angularVelocity: number;
+    speed: number;
+    angularSpeed: number;
+    torque: number;
+  };
+
+  internal.position.x = x;
+  internal.position.y = y;
+  internal.positionPrev.x = x;
+  internal.positionPrev.y = y;
+  internal.angle = 0;
+  internal.anglePrev = 0;
+  internal.velocity.x = 0;
+  internal.velocity.y = 0;
+  internal.angularVelocity = 0;
+  internal.speed = 0;
+  internal.angularSpeed = 0;
+  internal.force.x = 0;
+  internal.force.y = 0;
+  internal.torque = 0;
+  return true;
+}

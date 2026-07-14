@@ -4,7 +4,7 @@ import React from 'react';
 
 export function ConnectionLegend() {
   return (
-    <div className="absolute bottom-6 left-10 z-40 w-64 rounded-sm border border-[#222733] bg-[#0D0F17]/90 p-3 shadow-xl backdrop-blur-md flex flex-col gap-2.5 pointer-events-auto font-mono text-[11px]">
+    <div className="fixed bottom-6 left-10 z-40 w-64 rounded-sm border border-[#222733] bg-[#0D0F17]/90 p-3 shadow-xl backdrop-blur-md flex flex-col gap-2.5 pointer-events-auto font-mono text-[11px]">
       {/* Title */}
       <div className="text-[9px] font-bold uppercase tracking-widest text-neutral-500 flex items-center justify-between border-b border-[#222733] pb-1.5">
         <span>{"// TELEMETRÍA DE ENLACES"}</span>

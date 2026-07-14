@@ -10,7 +10,7 @@ import { useDragNode } from '../../hooks/useDragNode';
 import { useMagneticForces } from '../../hooks/useMagneticForces';
 import { useConnectionDraw } from '../../hooks/useConnectionDraw';
 import { useCanvasCommands } from '../../hooks/useCanvasCommands';
-import { createNodeBody, destroyNodeBody, CATEGORY_PHYSICS, type NodeBody } from '../../physics/bodies';
+import { createNodeBody, destroyNodeBody, syncBodyPhysics, setBodyPinned, CATEGORY_PHYSICS, type NodeBody } from '../../physics/bodies';
 import { createSpringConstraint, destroyConstraint } from '../../physics/constraints';
 import { applyVortexSuction } from '../../physics/forces';
 import { INITIAL_DEMO_NODES, INITIAL_DEMO_CONNECTIONS } from './DemoNodes';
@@ -36,6 +36,7 @@ export function PhysicsCanvas() {
     nodes,
     connections,
     selectedId,
+    searchQuery,
     physicsConfig,
     addNode,
     updateNode,
@@ -202,7 +203,7 @@ export function PhysicsCanvas() {
           node.height
         );
         if (node.isPinned) {
-          Matter.Body.setStatic(body, true);
+          setBodyPinned(body, true);
         }
         currentBodies.set(node.id, body);
       } else {
@@ -211,10 +212,8 @@ export function PhysicsCanvas() {
         
         // Sync static state dynamically (except when dragging)
         const isPinned = node.isPinned || false;
-        if (!dragNode.isDragging(node.id)) {
-          if (body.isStatic !== isPinned) {
-            Matter.Body.setStatic(body, isPinned);
-          }
+        if (!dragNode.isDragging(node.id) && body.isStatic !== isPinned) {
+          setBodyPinned(body, isPinned);
         }
 
         // Dynamic scaling: If node dimensions changed in React state, scale the Matter.js body
@@ -231,18 +230,9 @@ export function PhysicsCanvas() {
         }
 
         // Update physical properties dynamically if category changed.
-        // Skip static (pinned) bodies: their mass/inertia are Infinity, and calling
-        // Matter.Body.setMass on them yields NaN inertia (Infinity / (Infinity/6)),
-        // which the constraint solver then propagates to connected nodes, corrupting
-        // their position/angle (frozen, no collisions, cannot move or delete).
-        const config = CATEGORY_PHYSICS[node.category];
-        if (config && !body.isStatic) {
-          if (body.mass !== config.mass) {
-            Matter.Body.setMass(body, config.mass);
-          }
-          body.frictionAir = config.frictionAir;
-          body.restitution = config.restitution;
-        }
+        // syncBodyPhysics skips static bodies to avoid the NaN-inertia corruption
+        // that would otherwise propagate to connected nodes via the constraint solver.
+        syncBodyPhysics(body, CATEGORY_PHYSICS[node.category]);
       }
     });
 
@@ -328,6 +318,7 @@ export function PhysicsCanvas() {
     zoom,
     panX,
     panY,
+    searchQuery,
   });
 
   // Hook for magnetic attraction/repulsión between nodes
@@ -683,7 +674,7 @@ export function PhysicsCanvas() {
 
       {/* Black Hole (Gravity Trash Vortex) UI */}
       <div 
-        className="absolute bottom-6 right-10 z-30 w-16 h-16 rounded-full border border-[#00E5FF]/20 flex items-center justify-center pointer-events-none select-none"
+        className="fixed bottom-6 right-10 z-30 w-16 h-16 rounded-full border border-[#00E5FF]/20 flex items-center justify-center pointer-events-none select-none"
         style={{
           background: 'radial-gradient(circle, rgba(0,0,0,0.95) 0%, rgba(11,15,25,0.7) 70%, rgba(0,229,255,0.05) 100%)',
           boxShadow: '0 0 25px rgba(0, 229, 255, 0.15), inset 0 0 15px rgba(0, 229, 255, 0.2)',
@@ -726,14 +717,7 @@ export function PhysicsCanvas() {
               updateNode(contextMenu.nodeId, { isPinned: nextPinned });
               const body = bodiesRef.current.get(contextMenu.nodeId);
               if (body) {
-                Matter.Body.setStatic(body, nextPinned);
-                if (!nextPinned) {
-                  // Give it a tiny random drift velocity so it doesn't look frozen/dead
-                  Matter.Body.setVelocity(body, {
-                    x: (Math.random() - 0.5) * 1.5,
-                    y: (Math.random() - 0.5) * 1.5,
-                  });
-                }
+                setBodyPinned(body, nextPinned);
               }
             }
           }}

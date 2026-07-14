@@ -63,6 +63,7 @@ function sanitizeConnection(raw: unknown, validNodeIds: Set<string>): Connection
     sourceId,
     targetId,
     type,
+    label: typeof raw.label === 'string' ? sanitizeText(raw.label, 40) || undefined : undefined,
   };
 }
 

@@ -12,6 +12,9 @@ import { useConnectionDraw } from '../../hooks/useConnectionDraw';
 import { useCanvasCommands } from '../../hooks/useCanvasCommands';
 import { usePresentation } from '../../hooks/usePresentation';
 import { useStarDrag } from '../../hooks/useStarDrag';
+import { useConstellationShortcuts } from '../../hooks/useConstellationShortcuts';
+import { loadPersistedViewState, saveViewState } from '../../store/slices/viewSlice';
+import { Minimap } from '../hud/Minimap';
 import { createNodeBody, destroyNodeBody, syncBodyPhysics, setBodyPinned, CATEGORY_PHYSICS, type NodeBody } from '../../physics/bodies';
 import { createSpringConstraint, destroyConstraint } from '../../physics/constraints';
 import { applyVortexSuction } from '../../physics/forces';
@@ -43,8 +46,12 @@ export function PhysicsCanvas() {
     selectedId,
     searchQuery,
     showConstellations,
+    constellationMode,
     collapsedClusters,
     toggleCollapse,
+    expandAll,
+    setConstellationMode,
+    loadViewState,
     physicsConfig,
     addNode,
     updateNode,
@@ -84,12 +91,21 @@ export function PhysicsCanvas() {
   const haloRefs = useRef<Map<number, SVGEllipseElement>>(new Map());
   // Registry of constellationId -> SVG group element for the star/chip control
   const starRefs = useRef<Map<number, SVGGElement>>(new Map());
+  // Registry of connectionId -> SVG group element for the editable label
+  const labelRefs = useRef<Map<string, SVGGElement>>(new Map());
 
-  // Connected-component "constellations" (Idea 1). Recomputed only when the
-  // graph topology changes; hidden when the user toggles them off.
+  // Center the camera on a given world point (used by the minimap).
+  const recenterOnWorld = (worldX: number, worldY: number) => {
+    const z = useGraviStore.getState().physicsConfig.zoom;
+    setPan(-worldX * z, -worldY * z);
+  };
+
+  // Constellations (Idea 1 / 5). 'graph' = connected components; 'tags' = shared
+  // tags. Recomputed only when topology or grouping mode changes. Hidden when
+  // the user toggles constellations off.
   const constellations = useMemo(
-    () => (showConstellations ? computeConstellations(nodes, connections) : []),
-    [showConstellations, nodes, connections]
+    () => (showConstellations ? computeConstellations(nodes, connections, constellationMode) : []),
+    [showConstellations, constellationMode, nodes, connections]
   );
 
   // Tour order excludes nodes mid-deletion so the guided presentation never
@@ -369,6 +385,7 @@ export function PhysicsCanvas() {
     haloRefs,
     collapsedClusters,
     starRefs,
+    labelRefs,
   });
 
   // Hook for presentation / guided tour camera + keyboard controls (Idea 3)
@@ -398,6 +415,37 @@ export function PhysicsCanvas() {
       }
     }
   }, [collapsedClusters, bodiesRef]);
+
+  // Restore persisted view session (Idea 3) once the initial state is loaded.
+  const viewLoadedRef = useRef(false);
+  useEffect(() => {
+    if (viewLoadedRef.current) return;
+    if (nodes.length === 0) return;
+    const persisted = loadPersistedViewState();
+    if (persisted) loadViewState(persisted);
+    viewLoadedRef.current = true;
+  }, [nodes.length, loadViewState]);
+
+  // Persist the view session (cheap) whenever it changes.
+  useEffect(() => {
+    const unsub = useGraviStore.subscribe((state) => {
+      saveViewState(state);
+    });
+    return unsub;
+  }, []);
+
+  // Constellation keyboard shortcuts (Idea 1)
+  const collapsedKeys = useMemo(
+    () => new Set(collapsedClusters.map((c) => c.key)),
+    [collapsedClusters]
+  );
+  useConstellationShortcuts({
+    selectedId,
+    constellationEntries,
+    collapsedKeys,
+    onToggleCollapse: toggleCollapse,
+    onExpandAll: expandAll,
+  });
 
   // Hook for magnetic attraction/repulsión between nodes
   useMagneticForces({
@@ -731,6 +779,7 @@ export function PhysicsCanvas() {
           onCycleConnection={cycleConnection}
           onRemoveConnection={removeConnection}
           svgRefs={svgRefs}
+          labelRefs={labelRefs}
         />
 
         {/* Disintegration particles canvas layer */}
@@ -761,6 +810,18 @@ export function PhysicsCanvas() {
 
       {/* Presentation / guided tour control bar */}
       <PresentationBar tourNodes={tourNodes} />
+
+      {/* Minimap (Idea 2) */}
+      {nodes.length > 0 && (
+        <Minimap
+          bodiesRef={bodiesRef}
+          nodes={nodes}
+          zoom={zoom}
+          panX={panX}
+          panY={panY}
+          onRecenter={recenterOnWorld}
+        />
+      )}
 
       {/* Black Hole (Gravity Trash Vortex) UI */}
       <div 

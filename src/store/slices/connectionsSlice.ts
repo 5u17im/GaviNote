@@ -8,6 +8,7 @@ export interface ConnectionsSlice {
   addConnection: (sourceId: string, targetId: string, type?: ConnectionType) => string | null;
   removeConnection: (id: string) => void;
   cycleConnection: (id: string) => void; // Neutro -> Apoyo -> Conflicto -> Neutro
+  updateConnection: (id: string, patch: Partial<Pick<Connection, 'label' | 'type'>>) => void;
 }
 
 export const createConnectionsSlice: StateCreator<GraviStore, [], [], ConnectionsSlice> = (set, get) => ({
@@ -56,6 +57,12 @@ export const createConnectionsSlice: StateCreator<GraviStore, [], [], Connection
         }
         return c;
       }),
+    }));
+  },
+
+  updateConnection: (id, patch) => {
+    set((state) => ({
+      connections: state.connections.map((c) => (c.id === id ? { ...c, ...patch } : c)),
     }));
   },
 });

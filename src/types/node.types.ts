@@ -22,7 +22,7 @@ export interface Connection {
   sourceId: string;
   targetId: string;
   type: ConnectionType;
-  label?: string;
+  label?: string; // Editable relationship text (e.g. "causa → efecto")
 }
 
 export interface PhysicsConfig {

@@ -29,6 +29,7 @@ interface UsePhysicsSyncProps {
   haloRefs: React.MutableRefObject<Map<number, SVGEllipseElement>>;
   collapsedClusters: { key: string; nodeIds: string[] }[];
   starRefs: React.MutableRefObject<Map<number, SVGGElement>>;
+  labelRefs: React.MutableRefObject<Map<string, SVGGElement>>;
 }
 
 // Extra px around the viewport before a card is culled — avoids pop-in when panning.
@@ -77,7 +78,8 @@ export function usePhysicsSync({
   constellationEntries,
   haloRefs,
   collapsedClusters,
-  starRefs
+  starRefs,
+  labelRefs
 }: UsePhysicsSyncProps) {
   // Keep stable refs so the RAF loop always has fresh data without restarting
   const nodesRef = useRef(nodes);
@@ -382,6 +384,12 @@ export function usePhysicsSync({
           if (thickEl) {
             thickEl.setAttribute('d', path);
           }
+
+          // Position the editable relationship label at the path midpoint.
+          const label = labelRefs.current.get(conn.id);
+          if (label) {
+            label.setAttribute('transform', `translate(${(sourceX + targetX) / 2}, ${(sourceY + targetY) / 2})`);
+          }
         });
       } catch (err) {
         logError("Error in syncPositions RAF loop:", err);
@@ -395,7 +403,7 @@ export function usePhysicsSync({
     return () => {
       if (rafId !== null) cancelAnimationFrame(rafId);
     };
-  }, [engineRef, bodiesRef, domRefs, svgRefs, haloRefs, starRefs]);
+  }, [engineRef, bodiesRef, domRefs, svgRefs, haloRefs, starRefs, labelRefs]);
 
 
 }

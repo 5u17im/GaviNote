@@ -23,24 +23,30 @@ export const CONSTELLATION_COLORS = [
 ];
 
 /**
- * Groups nodes into "constellations" — the connected components of the graph
- * formed by the connections. Only components with 2+ members are returned
- * (a lone node is not a constellation). Colors are assigned deterministically
- * so they stay stable across re-renders as long as the topology is unchanged.
+ * Groups nodes into "constellations".
+ *  - mode 'graph' (default): the connected components of the graph formed by the
+ *    connections (union-find).
+ *  - mode 'tags': nodes that share at least one tag form a cluster, so you can
+ *    organize by theme without having to draw every link.
+ *
+ * Only clusters with 2+ members are returned (a lone node is not a constellation).
+ * Nodes mid-deletion are excluded so a halo/star never follows a body flying into
+ * the vortex. Colors are assigned deterministically per cluster.
  */
-export function computeConstellations(nodes: NodeMeta[], connections: Connection[]): Constellation[] {
-  const parent = new Map<string, string>();
-  // Nodes mid-deletion (being sucked into the vortex) are excluded from the
-  // graph so a constellation's halo/star never follows a body that is flying
-  // away — which previously made the halo orbit the whole screen.
+export function computeConstellations(
+  nodes: NodeMeta[],
+  connections: Connection[],
+  mode: 'graph' | 'tags' = 'graph'
+): Constellation[] {
   const liveNodes = nodes.filter((n) => !n.isDeleting);
   const nodeIds = new Set(liveNodes.map((n) => n.id));
+
+  const parent = new Map<string, string>();
   for (const n of liveNodes) parent.set(n.id, n.id);
 
   const find = (x: string): string => {
     let root = x;
     while (parent.get(root) !== root) root = parent.get(root)!;
-    // Path compression
     let cur = x;
     while (parent.get(cur) !== root) {
       const next = parent.get(cur)!;
@@ -56,9 +62,26 @@ export function computeConstellations(nodes: NodeMeta[], connections: Connection
     if (ra !== rb) parent.set(ra, rb);
   };
 
-  for (const c of connections) {
-    if (nodeIds.has(c.sourceId) && nodeIds.has(c.targetId)) {
-      union(c.sourceId, c.targetId);
+  if (mode === 'tags') {
+    // Connect every pair of nodes that share a non-empty tag.
+    const byTag = new Map<string, string[]>();
+    for (const n of liveNodes) {
+      for (const tag of n.tags) {
+        const t = tag.trim().toLowerCase();
+        if (!t) continue;
+        const arr = byTag.get(t) ?? [];
+        arr.push(n.id);
+        byTag.set(t, arr);
+      }
+    }
+    for (const ids of byTag.values()) {
+      for (let i = 1; i < ids.length; i++) union(ids[0], ids[i]);
+    }
+  } else {
+    for (const c of connections) {
+      if (nodeIds.has(c.sourceId) && nodeIds.has(c.targetId)) {
+        union(c.sourceId, c.targetId);
+      }
     }
   }
 

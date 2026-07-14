@@ -64,4 +64,39 @@ describe('computeConstellations', () => {
     const second = computeConstellations(nodes, conns);
     expect(first.map((c) => c.color)).toEqual(second.map((c) => c.color));
   });
+
+  describe('mode "tags"', () => {
+    it('groups nodes that share a tag, ignoring graph links', () => {
+      const nodes = ['a', 'b', 'c', 'd'].map(makeNode);
+      nodes[0].tags = ['alpha'];
+      nodes[1].tags = ['alpha'];
+      nodes[2].tags = ['beta'];
+      nodes[3].tags = ['beta'];
+      // No connections at all.
+      const result = computeConstellations(nodes, [], 'tags');
+      expect(result).toHaveLength(2);
+      const sizes = result.map((c) => c.nodeIds.length).sort();
+      expect(sizes).toEqual([2, 2]);
+    });
+
+    it('keeps unlinked-but-tagged nodes in their group', () => {
+      const nodes = ['a', 'b', 'c'].map(makeNode);
+      nodes[0].tags = ['x'];
+      nodes[1].tags = ['x'];
+      nodes[2].tags = ['y'];
+      const result = computeConstellations(nodes, [], 'tags');
+      const alpha = result.find((c) => c.nodeIds.includes('a'))!;
+      expect(alpha.nodeIds).toContain('b');
+      expect(alpha.nodeIds).not.toContain('c');
+    });
+
+    it('falls back to graph mode in the default', () => {
+      const nodes = ['a', 'b', 'c'].map(makeNode);
+      nodes[0].tags = ['x'];
+      nodes[1].tags = ['x'];
+      const result = computeConstellations(nodes, []);
+      // No connections → no graph clusters despite shared tag.
+      expect(result).toHaveLength(0);
+    });
+  });
 });

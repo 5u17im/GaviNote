@@ -19,7 +19,8 @@ import {
   Info,
   Search,
   Orbit,
-  Play
+  Play,
+  Tag
 } from 'lucide-react';
 
 export function HUDPanel() {
@@ -35,6 +36,8 @@ export function HUDPanel() {
     setSearchQuery,
     showConstellations,
     toggleConstellations,
+    constellationMode,
+    setConstellationMode,
     startPresentation,
     setGravity,
     setAirFriction,
@@ -187,6 +190,21 @@ export function HUDPanel() {
           }`}
         >
           <Orbit size={16} aria-hidden="true" />
+        </button>
+
+        {/* Grouping mode: by graph vs by shared tags (Idea 5) */}
+        <button
+          onClick={() => setConstellationMode(constellationMode === 'tags' ? 'graph' : 'tags')}
+          aria-pressed={constellationMode === 'tags'}
+          title={constellationMode === 'tags' ? 'Agrupar por tags' : 'Agrupar por conexiones'}
+          aria-label="Cambiar modo de agrupación de constelaciones"
+          className={`p-3 rounded-md border transition-all shadow-xl hover:scale-105 active:scale-95 flex items-center justify-center cursor-pointer backdrop-blur-md ${
+            constellationMode === 'tags'
+              ? 'bg-[#161A26] border-[#CE93D8]/40 text-[#CE93D8]'
+              : 'border-[#222733] bg-[#0D0F17]/95 hover:bg-[#161A26] hover:border-white/10 text-white'
+          }`}
+        >
+          <Tag size={16} aria-hidden="true" />
         </button>
 
         {/* Start Presentation */}

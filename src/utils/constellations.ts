@@ -2,6 +2,9 @@ import { NodeMeta, Connection } from '../types/node.types';
 
 export interface Constellation {
   id: number;
+  // Stable identifier across re-renders (the lexicographically smallest member
+  // id). Used to persist collapse state independently of the volatile numeric id.
+  key: string;
   color: string;
   nodeIds: string[];
 }
@@ -75,6 +78,7 @@ export function computeConstellations(nodes: NodeMeta[], connections: Connection
 
   return multi.map((ids, i) => ({
     id: i,
+    key: [...ids].sort()[0],
     color: CONSTELLATION_COLORS[i % CONSTELLATION_COLORS.length],
     nodeIds: ids,
   }));

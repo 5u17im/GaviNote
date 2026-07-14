@@ -28,6 +28,7 @@ export const useGraviStore = create<GraviStore>()((set, get, api) => ({
       searchQuery: '',
       isPresenting: false,
       tourIndex: 0,
+      collapsedKeys: [],
     });
   },
 
@@ -40,6 +41,7 @@ export const useGraviStore = create<GraviStore>()((set, get, api) => ({
       searchQuery: '',
       isPresenting: false,
       tourIndex: 0,
+      collapsedKeys: [],
     });
   },
 }));

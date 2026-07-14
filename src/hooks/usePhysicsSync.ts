@@ -24,6 +24,8 @@ interface UsePhysicsSyncProps {
   searchQuery: string;
   constellations: Constellation[];
   haloRefs: React.MutableRefObject<Map<number, SVGEllipseElement>>;
+  collapsedKeys: string[];
+  starRefs: React.MutableRefObject<Map<number, SVGGElement>>;
 }
 
 // Extra px around the viewport before a card is culled — avoids pop-in when panning.
@@ -69,7 +71,9 @@ export function usePhysicsSync({
   panY,
   searchQuery,
   constellations,
-  haloRefs
+  haloRefs,
+  collapsedKeys,
+  starRefs
 }: UsePhysicsSyncProps) {
   // Keep stable refs so the RAF loop always has fresh data without restarting
   const nodesRef = useRef(nodes);
@@ -80,6 +84,7 @@ export function usePhysicsSync({
   // null = no active search; otherwise the set of node ids matching the query.
   const matchIdsRef = useRef<Set<string> | null>(null);
   const constellationsRef = useRef<Constellation[]>(constellations);
+  const collapsedKeysRef = useRef<Set<string>>(new Set(collapsedKeys));
 
   useEffect(() => {
     nodesRef.current = nodes;
@@ -88,6 +93,7 @@ export function usePhysicsSync({
     panXRef.current = panX;
     panYRef.current = panY;
     constellationsRef.current = constellations;
+    collapsedKeysRef.current = new Set(collapsedKeys);
 
     const q = searchQuery.trim().toLowerCase();
     if (!q) {
@@ -100,7 +106,7 @@ export function usePhysicsSync({
       }
       matchIdsRef.current = set;
     }
-  }, [nodes, connections, zoom, panX, panY, searchQuery, constellations]);
+  }, [nodes, connections, zoom, panX, panY, searchQuery, constellations, collapsedKeys]);
 
   useEffect(() => {
     const engine = engineRef.current;
@@ -119,12 +125,84 @@ export function usePhysicsSync({
         const nodeMap = new Map<string, NodeMeta>();
         for (const node of currentNodes) nodeMap.set(node.id, node);
 
+        // 0. Constellations — fit each halo around its live members, and, for
+        // collapsed ones, position the "star" at the centroid. This runs first so
+        // the node/connection passes below can hide members and re-route lines to
+        // the star. The physics bodies are never touched — this is purely visual.
+        const collapsedKeys = collapsedKeysRef.current;
+        const collapsedNodeIds = new Set<string>();
+        // Shared centroid object per collapsed constellation — identity is reused
+        // so a connection can detect "both endpoints in the same star".
+        const centroidByNode = new Map<string, { x: number; y: number }>();
+
+        for (const c of constellationsRef.current) {
+          const ell = haloRefs.current.get(c.id);
+          const star = starRefs.current.get(c.id);
+          const collapsed = collapsedKeys.has(c.key);
+
+          let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+          let hasMember = false;
+          for (const nid of c.nodeIds) {
+            const b = bodies.get(nid);
+            if (!b || !Number.isFinite(b.position.x) || !Number.isFinite(b.position.y)) continue;
+            const nm = nodeMap.get(nid);
+            const cfg = nm ? CATEGORY_PHYSICS[nm.category] : undefined;
+            const w = nm?.width ?? cfg?.width ?? 260;
+            const h = nm?.height ?? cfg?.height ?? 120;
+            minX = Math.min(minX, b.position.x - w / 2);
+            maxX = Math.max(maxX, b.position.x + w / 2);
+            minY = Math.min(minY, b.position.y - h / 2);
+            maxY = Math.max(maxY, b.position.y + h / 2);
+            hasMember = true;
+          }
+
+          if (!hasMember) {
+            if (ell && ell.style.display !== 'none') ell.style.display = 'none';
+            if (star && star.style.display !== 'none') star.style.display = 'none';
+            continue;
+          }
+
+          const cxHalo = (minX + maxX) / 2;
+          const cyHalo = (minY + maxY) / 2;
+
+          if (ell) {
+            ell.style.display = '';
+            ell.setAttribute('cx', cxHalo.toString());
+            ell.setAttribute('cy', cyHalo.toString());
+            ell.setAttribute('rx', ((maxX - minX) / 2 + HALO_PADDING).toString());
+            ell.setAttribute('ry', ((maxY - minY) / 2 + HALO_PADDING).toString());
+          }
+
+          if (star) {
+            star.style.display = '';
+            // Collapsed → star sits at the centroid; expanded → chip floats above.
+            const sx = cxHalo;
+            const sy = collapsed ? cyHalo : minY - 30;
+            star.setAttribute('transform', `translate(${sx}, ${sy})`);
+          }
+
+          if (collapsed) {
+            const centroid = { x: cxHalo, y: cyHalo };
+            for (const nid of c.nodeIds) {
+              collapsedNodeIds.add(nid);
+              centroidByNode.set(nid, centroid);
+            }
+          }
+        }
+
         // 1. Sync Node DOM positions — read live body positions every frame
         for (const [id, body] of bodies.entries()) {
           const domElement = doms.get(id);
           if (!domElement) continue;
           const nodeMeta = nodeMap.get(id);
           if (!nodeMeta) continue;
+
+          // Collapsed into a star: hide the member card entirely (body keeps
+          // simulating, so expanding restores it exactly where physics left it).
+          if (collapsedNodeIds.has(id)) {
+            if (domElement.style.display !== 'none') domElement.style.display = 'none';
+            continue;
+          }
 
           // Last line of defense: repair any body whose state went non-finite so a
           // single corrupted frame can't permanently brick a node.
@@ -225,15 +303,25 @@ export function usePhysicsSync({
           const targetBody = bodies.get(conn.targetId);
           if (!sourceBody || !targetBody) return;
 
-          const path = calcBezierPath(
-            sourceBody.position.x,
-            sourceBody.position.y,
-            targetBody.position.x,
-            targetBody.position.y
-          );
+          // Collapsed constellations: an internal edge (both ends in the same
+          // star) is hidden; an external edge re-routes its collapsed end to the
+          // star's centroid so it visibly connects to the star.
+          const sc = centroidByNode.get(conn.sourceId);
+          const tc = centroidByNode.get(conn.targetId);
+          if (sc && tc && sc === tc) {
+            if (pathEl) pathEl.removeAttribute('d');
+            if (thickEl) thickEl.removeAttribute('d');
+            return;
+          }
+          const sourceX = sc ? sc.x : sourceBody.position.x;
+          const sourceY = sc ? sc.y : sourceBody.position.y;
+          const targetX = tc ? tc.x : targetBody.position.x;
+          const targetY = tc ? tc.y : targetBody.position.y;
 
-          const dx = targetBody.position.x - sourceBody.position.x;
-          const dy = targetBody.position.y - sourceBody.position.y;
+          const path = calcBezierPath(sourceX, sourceY, targetX, targetY);
+
+          const dx = targetX - sourceX;
+          const dy = targetY - sourceY;
           const distance = Math.sqrt(dx * dx + dy * dy);
 
           // Elastic tension calculations (rest length of spring is 260px)
@@ -260,44 +348,6 @@ export function usePhysicsSync({
             thickEl.setAttribute('d', path);
           }
         });
-
-        // 3. Sync constellation halos — fit an ellipse around each component's
-        // live member bodies.
-        for (const c of constellationsRef.current) {
-          const ell = haloRefs.current.get(c.id);
-          if (!ell) continue;
-
-          let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
-          let hasMember = false;
-          for (const nid of c.nodeIds) {
-            const b = bodies.get(nid);
-            if (!b || !Number.isFinite(b.position.x) || !Number.isFinite(b.position.y)) continue;
-            const nm = nodeMap.get(nid);
-            const cfg = nm ? CATEGORY_PHYSICS[nm.category] : undefined;
-            const w = nm?.width ?? cfg?.width ?? 260;
-            const h = nm?.height ?? cfg?.height ?? 120;
-            minX = Math.min(minX, b.position.x - w / 2);
-            maxX = Math.max(maxX, b.position.x + w / 2);
-            minY = Math.min(minY, b.position.y - h / 2);
-            maxY = Math.max(maxY, b.position.y + h / 2);
-            hasMember = true;
-          }
-
-          if (!hasMember) {
-            if (ell.style.display !== 'none') ell.style.display = 'none';
-            continue;
-          }
-          if (ell.style.display === 'none') ell.style.display = '';
-
-          const cxHalo = (minX + maxX) / 2;
-          const cyHalo = (minY + maxY) / 2;
-          const rx = (maxX - minX) / 2 + HALO_PADDING;
-          const ry = (maxY - minY) / 2 + HALO_PADDING;
-          ell.setAttribute('cx', cxHalo.toString());
-          ell.setAttribute('cy', cyHalo.toString());
-          ell.setAttribute('rx', rx.toString());
-          ell.setAttribute('ry', ry.toString());
-        }
       } catch (err) {
         logError("Error in syncPositions RAF loop:", err);
       }
@@ -310,7 +360,7 @@ export function usePhysicsSync({
     return () => {
       if (rafId !== null) cancelAnimationFrame(rafId);
     };
-  }, [engineRef, bodiesRef, domRefs, svgRefs, haloRefs]);
+  }, [engineRef, bodiesRef, domRefs, svgRefs, haloRefs, starRefs]);
 
 
 }

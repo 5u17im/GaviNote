@@ -42,6 +42,8 @@ export function PhysicsCanvas() {
     selectedId,
     searchQuery,
     showConstellations,
+    collapsedKeys,
+    toggleCollapse,
     physicsConfig,
     addNode,
     updateNode,
@@ -79,6 +81,8 @@ export function PhysicsCanvas() {
   const svgRefs = useRef<Map<string, ConnectionPathRefs>>(new Map());
   // Registry of constellationId -> SVG ellipse element for the halo
   const haloRefs = useRef<Map<number, SVGEllipseElement>>(new Map());
+  // Registry of constellationId -> SVG group element for the star/chip control
+  const starRefs = useRef<Map<number, SVGGElement>>(new Map());
 
   // Connected-component "constellations" (Idea 1). Recomputed only when the
   // graph topology changes; hidden when the user toggles them off.
@@ -335,6 +339,8 @@ export function PhysicsCanvas() {
     searchQuery,
     constellations,
     haloRefs,
+    collapsedKeys,
+    starRefs,
   });
 
   // Hook for presentation / guided tour camera + keyboard controls (Idea 3)
@@ -657,7 +663,13 @@ export function PhysicsCanvas() {
         }}
       >
         {/* Constellation halos (behind everything) */}
-        <ConstellationLayer constellations={constellations} haloRefs={haloRefs} />
+        <ConstellationLayer
+          constellations={constellations}
+          haloRefs={haloRefs}
+          starRefs={starRefs}
+          collapsedKeys={collapsedKeys}
+          onToggleCollapse={toggleCollapse}
+        />
 
         {/* SVG connection lines overlay */}
         <SVGConnectionLayer

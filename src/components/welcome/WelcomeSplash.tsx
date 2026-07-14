@@ -45,6 +45,10 @@ export function WelcomeSplash() {
     canvas.width = width;
     canvas.height = height;
 
+    // Initialize canvas with solid background to make it opaque and prevent compositor alpha artifacts
+    ctx.fillStyle = '#0B0F19';
+    ctx.fillRect(0, 0, width, height);
+
     // Create an offscreen canvas to sample text pixels
     const offscreen = document.createElement('canvas');
     offscreen.width = width;
@@ -60,16 +64,26 @@ export function WelcomeSplash() {
       octx.textAlign = 'center';
       octx.textBaseline = 'middle';
       
-      // Responsive font size
-      const fontSize = Math.min(width * 0.08, 90);
-      octx.font = `900 ${fontSize}px var(--font-sans, Inter, sans-serif)`;
-      octx.fillText('GRAVI-NOTE', width / 2, height / 2 - 20);
+      // Calculate font size so it dynamically takes ~75% of screen width (max 150px)
+      let fontSize = 100;
+      octx.font = `900 ${fontSize}px Inter, system-ui, -apple-system, sans-serif`;
+      const measuredWidth = octx.measureText('GRAVI-NOTE').width;
+      fontSize = Math.floor(fontSize * (width * 0.75) / measuredWidth);
+      fontSize = Math.min(fontSize, 150);
+
+      octx.font = `900 ${fontSize}px Inter, system-ui, -apple-system, sans-serif`;
+      octx.fillText('GRAVI-NOTE', width / 2, height / 2 - 30);
 
       // Setup subtitle text styling
-      const subSize = Math.min(width * 0.015, 15);
-      octx.font = `600 ${subSize}px var(--font-sans, Inter, sans-serif)`;
+      let subFontSize = 20;
+      octx.font = `600 ${subFontSize}px Inter, system-ui, -apple-system, sans-serif`;
+      const measuredSubWidth = octx.measureText('SISTEMA DE IDEACIÓN EN GRAVEDAD CERO').width;
+      subFontSize = Math.floor(subFontSize * (width * 0.60) / measuredSubWidth);
+      subFontSize = Math.min(subFontSize, 24);
+
+      octx.font = `600 ${subFontSize}px Inter, system-ui, -apple-system, sans-serif`;
       octx.fillStyle = '#cccccc';
-      octx.fillText('SISTEMA DE IDEACIÓN EN GRAVEDAD CERO', width / 2, height / 2 + 50);
+      octx.fillText('SISTEMA DE IDEACIÓN EN GRAVEDAD CERO', width / 2, height / 2 + fontSize / 2 + 10);
 
       // Sample pixels
       const imgData = octx.getImageData(0, 0, width, height);

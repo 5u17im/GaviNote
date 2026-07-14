@@ -230,9 +230,13 @@ export function PhysicsCanvas() {
           bodyWithData.userData = { width: targetW, height: targetH };
         }
 
-        // Update physical properties dynamically if category changed
+        // Update physical properties dynamically if category changed.
+        // Skip static (pinned) bodies: their mass/inertia are Infinity, and calling
+        // Matter.Body.setMass on them yields NaN inertia (Infinity / (Infinity/6)),
+        // which the constraint solver then propagates to connected nodes, corrupting
+        // their position/angle (frozen, no collisions, cannot move or delete).
         const config = CATEGORY_PHYSICS[node.category];
-        if (config) {
+        if (config && !body.isStatic) {
           if (body.mass !== config.mass) {
             Matter.Body.setMass(body, config.mass);
           }
@@ -451,13 +455,9 @@ export function PhysicsCanvas() {
     });
   };
 
-  // Wheel zoom
-  const handleWheel = (e: React.WheelEvent) => {
-    e.preventDefault();
-    const zoomFactor = 0.08;
-    const direction = e.deltaY < 0 ? 1 : -1;
-    setZoom((z) => z + direction * zoomFactor);
-  };
+  // Wheel zoom — registered as a native, non-passive listener (see effect below).
+  // React attaches onWheel passively, so e.preventDefault() there is ignored and
+  // Ctrl+Wheel (trackpad pinch) would zoom the whole browser page (HUD included).
 
   // Distance between the two active pointers (used for pinch-to-zoom)
   const pinchDistance = () => {
@@ -600,6 +600,21 @@ export function PhysicsCanvas() {
     }
   }, [selectedId]);
 
+  // Native, non-passive wheel listener so preventDefault actually stops the
+  // browser's Ctrl+Wheel page zoom (which would scale the fixed HUD too).
+  useEffect(() => {
+    const el = containerRef.current;
+    if (!el) return;
+    const onWheelNative = (e: WheelEvent) => {
+      e.preventDefault();
+      const zoomFactor = 0.08;
+      const direction = e.deltaY < 0 ? 1 : -1;
+      setZoom((z) => z + direction * zoomFactor);
+    };
+    el.addEventListener('wheel', onWheelNative, { passive: false });
+    return () => el.removeEventListener('wheel', onWheelNative);
+  }, [setZoom]);
+
   const cx = viewport.width / 2;
   const cy = viewport.height / 2;
 
@@ -607,7 +622,6 @@ export function PhysicsCanvas() {
     <div
       ref={containerRef}
       onDoubleClick={handleDoubleClick}
-      onWheel={handleWheel}
       onPointerDown={handlePanStart}
       onPointerMove={handlePanMove}
       onPointerUp={handlePanEnd}

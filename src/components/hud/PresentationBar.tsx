@@ -1,22 +1,26 @@
 'use client';
 
 import React from 'react';
+import type { NodeMeta } from '../../types/node.types';
 import { useGraviStore } from '../../store/useGraviStore';
 import { ChevronLeft, ChevronRight, X } from 'lucide-react';
 
-export function PresentationBar() {
+interface PresentationBarProps {
+  tourNodes: NodeMeta[];
+}
+
+export function PresentationBar({ tourNodes }: PresentationBarProps) {
   const isPresenting = useGraviStore((s) => s.isPresenting);
   const tourIndex = useGraviStore((s) => s.tourIndex);
-  const nodes = useGraviStore((s) => s.nodes);
   const nextStep = useGraviStore((s) => s.nextStep);
   const prevStep = useGraviStore((s) => s.prevStep);
   const stopPresentation = useGraviStore((s) => s.stopPresentation);
 
-  if (!isPresenting || nodes.length === 0) return null;
+  if (!isPresenting || tourNodes.length === 0) return null;
 
-  const total = nodes.length;
+  const total = tourNodes.length;
   const current = Math.min(tourIndex, total - 1);
-  const node = nodes[current];
+  const node = tourNodes[current];
   const title = node?.title?.trim() || 'Sin título';
 
   return (

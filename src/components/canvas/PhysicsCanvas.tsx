@@ -92,6 +92,10 @@ export function PhysicsCanvas() {
     [showConstellations, nodes, connections]
   );
 
+  // Tour order excludes nodes mid-deletion so the guided presentation never
+  // frames a note that is being sucked into the vortex.
+  const tourNodes = useMemo(() => nodes.filter((n) => !n.isDeleting), [nodes]);
+
   // Hook for pointer drag handler — move/up events are now registered on window
   // directly inside the hook to prevent the "wrong card moves" bug
   const dragNode = useDragNode({
@@ -345,7 +349,7 @@ export function PhysicsCanvas() {
   });
 
   // Hook for presentation / guided tour camera + keyboard controls (Idea 3)
-  usePresentation({ bodiesRef, nodes, setZoom, setPan });
+  usePresentation({ bodiesRef, nodes: tourNodes, setZoom, setPan });
 
   // Drag a collapsed constellation's star to move the whole cluster (formation preserved)
   const { onStarPointerDown } = useStarDrag({
@@ -735,7 +739,7 @@ export function PhysicsCanvas() {
       <UndoToast />
 
       {/* Presentation / guided tour control bar */}
-      <PresentationBar />
+      <PresentationBar tourNodes={tourNodes} />
 
       {/* Black Hole (Gravity Trash Vortex) UI */}
       <div 

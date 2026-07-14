@@ -257,36 +257,46 @@ export function usePhysicsSync({
           }
 
           if (nodeMeta.isDeleting) {
-            // Calculate vortex world position dynamically
+            // Calculate vortex world position dynamically (matches the on-screen
+            // vortex element, bottom-right, with the same 64px inset).
             const cx = window.innerWidth / 2;
             const cy = window.innerHeight / 2;
             const currentZoom = zoomRef.current;
             const currentPanX = panXRef.current;
             const currentPanY = panYRef.current;
 
-            const vortexWorldX = (window.innerWidth - 72 - cx - currentPanX) / currentZoom;
-            const vortexWorldY = (window.innerHeight - 56 - cy - currentPanY) / currentZoom;
+            const vortexWorldX = (window.innerWidth - 64 - cx - currentPanX) / currentZoom;
+            const vortexWorldY = (window.innerHeight - 64 - cy - currentPanY) / currentZoom;
 
             const dx = vortexWorldX - body.position.x;
             const dy = vortexWorldY - body.position.y;
             const distance = Math.sqrt(dx * dx + dy * dy);
             const pullAngle = Math.atan2(dy, dx);
 
-            // Normalize t from 1.0 (at 350px distance) to 0.0 (at center)
-            const t = Math.min(1.0, distance / 350);
+            // Normalize t from 1.0 (far, full size) to ~0.0 (at the singularity).
+            // ease-in so the spaghettification accelerates as it nears the center.
+            const SPAGHETTI_RANGE = 420;
+            const linear = Math.min(1.0, distance / SPAGHETTI_RANGE);
+            const t = linear * linear;
 
-            // Spaghettification stretching: long on pull axis (X), narrow on perpendicular (Y)
-            const scaleX = (1.0 + (1.0 - t) * 2.5) * t;
-            const scaleY = (0.05 + t * 0.65) * t;
+            // Spaghettification: stretch dramatically along the pull axis (X) and
+            // pinch to a thin strand perpendicular (Y) — like matter crossing the
+            // event horizon. ease-in makes it snap into a noodle near the core.
+            const scaleX = (1.0 + (1.0 - t) * 7.0) * (1.0 - t) + 0.06;
+            const scaleY = (0.04 + t * 0.9) * (1.0 - t) + 0.02;
 
-            // Tangential skew angle to simulate spiral shear stress (curved path bending)
-            const skewVal = (1.0 - t) * 35;
+            // Tangential skew to simulate spiral shear stress (curved path bending)
+            const skewVal = Math.pow(1.0 - t, 1.5) * 60;
 
             // 3D twist: spin the card around its longitudinal axis as it sinks
-            const rotateXVal = (1.0 - t) * 360;
+            const rotateXVal = (1.0 - t) * 720;
 
-            domElement.style.transform = `perspective(800px) translate3d(${x}px, ${y}px, 0) rotate(${pullAngle}rad) rotateX(${rotateXVal}deg) skewX(${skewVal}deg) scale(${scaleX}, ${scaleY})`;
-            domElement.style.opacity = `${Math.min(1.0, distance / 120)}`; // Fade out close to singularity
+            // Anchor the transform at the card's center so the stretch points at
+            // the vortex instead of drifting off-axis.
+            const anchorX = x + width / 2;
+            const anchorY = y + height / 2;
+            domElement.style.transform = `perspective(800px) translate3d(${anchorX}px, ${anchorY}px, 0) rotate(${pullAngle}rad) rotateX(${rotateXVal}deg) skewX(${skewVal}deg) scale(${scaleX}, ${scaleY})`;
+            domElement.style.opacity = `${Math.min(1.0, distance / 90)}`; // Fade out close to singularity
           } else {
             domElement.style.transform = `translate3d(${x}px, ${y}px, 0) rotate(${body.angle}rad)`;
             // Search: dim cards that don't match the active query (null = no search).

@@ -161,13 +161,14 @@ export function applyVortexSuction(
       return;
     }
 
-    // 1. Suction pull force (scaled by vortexGravity config)
-    const pullStrength = 0.05 * vortexGravity;
+    // 1. Suction pull force (scaled by vortexGravity config). Strong base pull so
+    // a node accelerates into the core and visibly stretches (spaghettification).
+    const pullStrength = 0.18 * vortexGravity;
     const fx = (dx / distance) * pullStrength;
     const fy = (dy / distance) * pullStrength;
 
     // 2. Spiral tangential force (whirlpool effect scaled by vortexGravity config)
-    const spiralStrength = 0.03 * vortexGravity;
+    const spiralStrength = 0.06 * vortexGravity;
     const sx = (-dy / distance) * spiralStrength;
     const sy = (dx / distance) * spiralStrength;
 

@@ -53,7 +53,8 @@ export const createViewSlice: StateCreator<GraviStore, [], [], ViewSlice> = (set
 
   nextStep: () => {
     const { tourIndex, nodes } = get();
-    set({ tourIndex: Math.min(tourIndex + 1, nodes.length - 1) });
+    const total = nodes.filter((n) => !n.isDeleting).length;
+    set({ tourIndex: Math.min(tourIndex + 1, Math.max(total - 1, 0)) });
   },
 
   prevStep: () => {
@@ -63,7 +64,8 @@ export const createViewSlice: StateCreator<GraviStore, [], [], ViewSlice> = (set
 
   goToStep: (index) => {
     const { nodes } = get();
-    if (nodes.length === 0) return;
-    set({ tourIndex: Math.min(Math.max(index, 0), nodes.length - 1) });
+    const total = nodes.filter((n) => !n.isDeleting).length;
+    if (total === 0) return;
+    set({ tourIndex: Math.min(Math.max(index, 0), total - 1) });
   },
 });

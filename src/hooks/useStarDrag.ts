@@ -8,7 +8,6 @@ interface UseStarDragProps {
   panX: number;
   panY: number;
   collapsedClusters: { key: string; nodeIds: string[] }[];
-  onToggleCollapse: (key: string, nodeIds: string[]) => void;
 }
 
 const DRAG_THRESHOLD = 4;
@@ -40,7 +39,6 @@ export function useStarDrag({
   panX,
   panY,
   collapsedClusters,
-  onToggleCollapse,
 }: UseStarDragProps) {
   const zoomRef = useRef(zoom);
   const panXRef = useRef(panX);
@@ -120,10 +118,9 @@ export function useStarDrag({
       if (!info || e.pointerId !== info.pointerId) return;
       infoRef.current = null;
 
-      // Plain tap → toggle collapse/expand.
+      // Plain tap is handled by the layer's onClick (so the C key and the chip
+      // click stay in sync). Here we only act when a real drag happened.
       if (!info.hasCaptured) {
-        const cluster = collapsedClustersRef.current.find((c) => c.key === info.key);
-        onToggleCollapse(info.key, cluster?.nodeIds ?? []);
         return;
       }
 
@@ -155,7 +152,6 @@ export function useStarDrag({
       window.removeEventListener('pointermove', onMove);
       window.removeEventListener('pointerup', onUp);
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [bodiesRef]);
 
   return { onStarPointerDown };

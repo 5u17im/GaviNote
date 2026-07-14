@@ -398,7 +398,6 @@ export function PhysicsCanvas() {
     panX,
     panY,
     collapsedClusters,
-    onToggleCollapse: toggleCollapse,
   });
 
   // Freeze the members of a collapsed constellation so they hold their relative
@@ -769,6 +768,7 @@ export function PhysicsCanvas() {
           haloRefs={haloRefs}
           starRefs={starRefs}
           collapsedClusters={collapsedClusters}
+          onToggleCollapse={toggleCollapse}
           onStarPointerDown={onStarPointerDown}
         />
 

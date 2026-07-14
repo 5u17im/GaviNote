@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef, useState, useMemo } from 'react';
 import Matter from 'matter-js';
 import { useGraviStore } from '../../store/useGraviStore';
 import { usePhysicsEngine } from '../../hooks/usePhysicsEngine';
@@ -10,6 +10,7 @@ import { useDragNode } from '../../hooks/useDragNode';
 import { useMagneticForces } from '../../hooks/useMagneticForces';
 import { useConnectionDraw } from '../../hooks/useConnectionDraw';
 import { useCanvasCommands } from '../../hooks/useCanvasCommands';
+import { usePresentation } from '../../hooks/usePresentation';
 import { createNodeBody, destroyNodeBody, syncBodyPhysics, setBodyPinned, CATEGORY_PHYSICS, type NodeBody } from '../../physics/bodies';
 import { createSpringConstraint, destroyConstraint } from '../../physics/constraints';
 import { applyVortexSuction } from '../../physics/forces';
@@ -17,9 +18,12 @@ import { INITIAL_DEMO_NODES, INITIAL_DEMO_CONNECTIONS } from './DemoNodes';
 import { BackgroundDots } from './BackgroundDots';
 import { NodeOverlay } from './NodeOverlay';
 import { SVGConnectionLayer } from './SVGConnectionLayer';
+import { ConstellationLayer } from './ConstellationLayer';
+import { computeConstellations } from '../../utils/constellations';
 import { HUDPanel } from '../hud/HUDPanel';
 import { UndoToast } from '../hud/UndoToast';
 import { ConnectionLegend } from '../hud/ConnectionLegend';
+import { PresentationBar } from '../hud/PresentationBar';
 import { NodeContextMenu } from '../nodes/NodeContextMenu';
 import { DisintegrationEffect, triggerDisintegration } from '../particles/DisintegrationEffect';
 import { CATEGORY_INFO } from '../nodes/registry';
@@ -37,6 +41,7 @@ export function PhysicsCanvas() {
     connections,
     selectedId,
     searchQuery,
+    showConstellations,
     physicsConfig,
     addNode,
     updateNode,
@@ -72,6 +77,15 @@ export function PhysicsCanvas() {
   const domRefs = useRef<Map<string, HTMLElement>>(new Map());
   // Registry of connectionId -> SVG path elements (avoids getElementById per frame)
   const svgRefs = useRef<Map<string, ConnectionPathRefs>>(new Map());
+  // Registry of constellationId -> SVG ellipse element for the halo
+  const haloRefs = useRef<Map<number, SVGEllipseElement>>(new Map());
+
+  // Connected-component "constellations" (Idea 1). Recomputed only when the
+  // graph topology changes; hidden when the user toggles them off.
+  const constellations = useMemo(
+    () => (showConstellations ? computeConstellations(nodes, connections) : []),
+    [showConstellations, nodes, connections]
+  );
 
   // Hook for pointer drag handler — move/up events are now registered on window
   // directly inside the hook to prevent the "wrong card moves" bug
@@ -319,7 +333,12 @@ export function PhysicsCanvas() {
     panX,
     panY,
     searchQuery,
+    constellations,
+    haloRefs,
   });
+
+  // Hook for presentation / guided tour camera + keyboard controls (Idea 3)
+  usePresentation({ bodiesRef, nodes, setZoom, setPan });
 
   // Hook for magnetic attraction/repulsión between nodes
   useMagneticForces({
@@ -637,6 +656,9 @@ export function PhysicsCanvas() {
           height: 0,
         }}
       >
+        {/* Constellation halos (behind everything) */}
+        <ConstellationLayer constellations={constellations} haloRefs={haloRefs} />
+
         {/* SVG connection lines overlay */}
         <SVGConnectionLayer
           connections={connections}
@@ -671,6 +693,9 @@ export function PhysicsCanvas() {
 
       {/* Undo deleted note Toast banner */}
       <UndoToast />
+
+      {/* Presentation / guided tour control bar */}
+      <PresentationBar />
 
       {/* Black Hole (Gravity Trash Vortex) UI */}
       <div 

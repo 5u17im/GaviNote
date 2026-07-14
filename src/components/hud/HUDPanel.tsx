@@ -17,7 +17,9 @@ import {
   Plus,
   Sliders,
   Info,
-  Search
+  Search,
+  Orbit,
+  Play
 } from 'lucide-react';
 
 export function HUDPanel() {
@@ -31,6 +33,9 @@ export function HUDPanel() {
     physicsConfig,
     searchQuery,
     setSearchQuery,
+    showConstellations,
+    toggleConstellations,
+    startPresentation,
     setGravity,
     setAirFriction,
     setMagnetStrength,
@@ -167,6 +172,32 @@ export function HUDPanel() {
           className="p-3 rounded-md border border-[#222733] bg-[#0D0F17]/95 hover:bg-[#161A26] hover:border-white/10 text-white transition-all shadow-xl hover:scale-105 active:scale-95 flex items-center justify-center cursor-pointer backdrop-blur-md"
         >
           <Maximize2 size={16} aria-hidden="true" />
+        </button>
+
+        {/* Toggle Constellations */}
+        <button
+          onClick={toggleConstellations}
+          title="Mostrar/ocultar constelaciones"
+          aria-label="Mostrar u ocultar constelaciones"
+          aria-pressed={showConstellations}
+          className={`p-3 rounded-md border transition-all shadow-xl hover:scale-105 active:scale-95 flex items-center justify-center cursor-pointer backdrop-blur-md ${
+            showConstellations
+              ? 'bg-[#161A26] border-[#00E5FF]/40 text-[#00E5FF]'
+              : 'border-[#222733] bg-[#0D0F17]/95 hover:bg-[#161A26] hover:border-white/10 text-white'
+          }`}
+        >
+          <Orbit size={16} aria-hidden="true" />
+        </button>
+
+        {/* Start Presentation */}
+        <button
+          onClick={startPresentation}
+          disabled={nodes.length === 0}
+          title="Iniciar recorrido guiado"
+          aria-label="Iniciar recorrido guiado"
+          className="p-3 rounded-md border border-[#222733] bg-[#0D0F17]/95 hover:bg-[#161A26] hover:border-white/10 text-white transition-all shadow-xl hover:scale-105 active:scale-95 flex items-center justify-center cursor-pointer backdrop-blur-md disabled:opacity-30 disabled:pointer-events-none"
+        >
+          <Play size={16} aria-hidden="true" />
         </button>
 
         {/* Toggle Menu Panel */}

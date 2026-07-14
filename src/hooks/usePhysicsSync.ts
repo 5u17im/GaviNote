@@ -4,6 +4,7 @@ import { CATEGORY_PHYSICS, sanitizeBody, type NodeBody } from '../physics/bodies
 import { calcBezierPath } from '../utils/bezier';
 import { logError } from '../utils/logger';
 import type { NodeMeta, Connection } from '../types/node.types';
+import type { Constellation } from '../utils/constellations';
 
 export interface ConnectionPathRefs {
   path: SVGPathElement | null;
@@ -21,10 +22,15 @@ interface UsePhysicsSyncProps {
   panX: number;
   panY: number;
   searchQuery: string;
+  constellations: Constellation[];
+  haloRefs: React.MutableRefObject<Map<number, SVGEllipseElement>>;
 }
 
 // Extra px around the viewport before a card is culled — avoids pop-in when panning.
 const CULL_MARGIN = 200;
+
+// Padding added around a constellation's member bounding box for its halo.
+const HALO_PADDING = 90;
 
 const BASE_COLORS = {
   neutra: '#64748B',
@@ -61,7 +67,9 @@ export function usePhysicsSync({
   zoom,
   panX,
   panY,
-  searchQuery
+  searchQuery,
+  constellations,
+  haloRefs
 }: UsePhysicsSyncProps) {
   // Keep stable refs so the RAF loop always has fresh data without restarting
   const nodesRef = useRef(nodes);
@@ -71,6 +79,7 @@ export function usePhysicsSync({
   const panYRef = useRef(panY);
   // null = no active search; otherwise the set of node ids matching the query.
   const matchIdsRef = useRef<Set<string> | null>(null);
+  const constellationsRef = useRef<Constellation[]>(constellations);
 
   useEffect(() => {
     nodesRef.current = nodes;
@@ -78,6 +87,7 @@ export function usePhysicsSync({
     zoomRef.current = zoom;
     panXRef.current = panX;
     panYRef.current = panY;
+    constellationsRef.current = constellations;
 
     const q = searchQuery.trim().toLowerCase();
     if (!q) {
@@ -90,7 +100,7 @@ export function usePhysicsSync({
       }
       matchIdsRef.current = set;
     }
-  }, [nodes, connections, zoom, panX, panY, searchQuery]);
+  }, [nodes, connections, zoom, panX, panY, searchQuery, constellations]);
 
   useEffect(() => {
     const engine = engineRef.current;
@@ -250,6 +260,44 @@ export function usePhysicsSync({
             thickEl.setAttribute('d', path);
           }
         });
+
+        // 3. Sync constellation halos — fit an ellipse around each component's
+        // live member bodies.
+        for (const c of constellationsRef.current) {
+          const ell = haloRefs.current.get(c.id);
+          if (!ell) continue;
+
+          let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+          let hasMember = false;
+          for (const nid of c.nodeIds) {
+            const b = bodies.get(nid);
+            if (!b || !Number.isFinite(b.position.x) || !Number.isFinite(b.position.y)) continue;
+            const nm = nodeMap.get(nid);
+            const cfg = nm ? CATEGORY_PHYSICS[nm.category] : undefined;
+            const w = nm?.width ?? cfg?.width ?? 260;
+            const h = nm?.height ?? cfg?.height ?? 120;
+            minX = Math.min(minX, b.position.x - w / 2);
+            maxX = Math.max(maxX, b.position.x + w / 2);
+            minY = Math.min(minY, b.position.y - h / 2);
+            maxY = Math.max(maxY, b.position.y + h / 2);
+            hasMember = true;
+          }
+
+          if (!hasMember) {
+            if (ell.style.display !== 'none') ell.style.display = 'none';
+            continue;
+          }
+          if (ell.style.display === 'none') ell.style.display = '';
+
+          const cxHalo = (minX + maxX) / 2;
+          const cyHalo = (minY + maxY) / 2;
+          const rx = (maxX - minX) / 2 + HALO_PADDING;
+          const ry = (maxY - minY) / 2 + HALO_PADDING;
+          ell.setAttribute('cx', cxHalo.toString());
+          ell.setAttribute('cy', cyHalo.toString());
+          ell.setAttribute('rx', rx.toString());
+          ell.setAttribute('ry', ry.toString());
+        }
       } catch (err) {
         logError("Error in syncPositions RAF loop:", err);
       }
@@ -262,7 +310,7 @@ export function usePhysicsSync({
     return () => {
       if (rafId !== null) cancelAnimationFrame(rafId);
     };
-  }, [engineRef, bodiesRef, domRefs, svgRefs]);
+  }, [engineRef, bodiesRef, domRefs, svgRefs, haloRefs]);
 
 
 }

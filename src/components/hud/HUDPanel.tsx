@@ -165,7 +165,7 @@ export function HUDPanel() {
           role="region"
           aria-label="Telemetría física y guardado"
           className="absolute top-24 right-6 z-40 w-80 rounded-md border border-[#222733] bg-[#0D0F17]/95 p-5 shadow-2xl shadow-black/80 backdrop-blur-md flex flex-col gap-4.5 animate-in slide-in-from-top-4 duration-200 pointer-events-auto"
-          style={{ maxHeight: 'calc(100vh - 120px)', overflowY: 'auto' }}
+          style={{ maxHeight: 'calc(100dvh - 120px)', overflowY: 'auto' }}
         >
           {/* Header */}
           <div className="flex items-center justify-between">

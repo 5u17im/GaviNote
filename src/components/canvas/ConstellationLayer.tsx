@@ -8,7 +8,7 @@ interface ConstellationLayerProps {
   haloRefs: React.MutableRefObject<Map<number, SVGEllipseElement>>;
   starRefs: React.MutableRefObject<Map<number, SVGGElement>>;
   collapsedKeys: string[];
-  onToggleCollapse: (key: string) => void;
+  onStarPointerDown: (key: string, e: React.PointerEvent) => void;
 }
 
 /**
@@ -26,7 +26,7 @@ export function ConstellationLayer({
   haloRefs,
   starRefs,
   collapsedKeys,
-  onToggleCollapse,
+  onStarPointerDown,
 }: ConstellationLayerProps) {
   const collapsed = new Set(collapsedKeys);
 
@@ -72,10 +72,7 @@ export function ConstellationLayer({
             <g
               ref={registerStar(c.id)}
               style={{ cursor: 'pointer', pointerEvents: 'auto' }}
-              onClick={(e) => {
-                e.stopPropagation();
-                onToggleCollapse(c.key);
-              }}
+              onPointerDown={(e) => onStarPointerDown(c.key, e)}
             >
               <title>
                 {isCollapsed

@@ -15,6 +15,7 @@ export interface NodesSlice {
 
   addNode: (node: Omit<NodeMeta, 'id' | 'createdAt'>) => string;
   updateNode: (id: string, patch: Partial<NodeMeta>) => void;
+  updateNodesPositions: (positions: { id: string; x: number; y: number }[]) => void;
   removeNode: (id: string) => void;
   recoverNode: () => void;
   selectNode: (id: string | null) => void;
@@ -43,6 +44,17 @@ export const createNodesSlice: StateCreator<GraviStore, [], [], NodesSlice> = (s
   updateNode: (id, patch) => {
     set((state) => ({
       nodes: state.nodes.map((node) => (node.id === id ? { ...node, ...patch } : node)),
+    }));
+  },
+
+  updateNodesPositions: (positions) => {
+    if (positions.length === 0) return;
+    const map = new Map(positions.map((p) => [p.id, p]));
+    set((state) => ({
+      nodes: state.nodes.map((node) => {
+        const p = map.get(node.id);
+        return p ? { ...node, initialX: p.x, initialY: p.y } : node;
+      }),
     }));
   },
 

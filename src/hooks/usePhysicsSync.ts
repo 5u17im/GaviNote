@@ -85,6 +85,7 @@ export function usePhysicsSync({
   const matchIdsRef = useRef<Set<string> | null>(null);
   const constellationsRef = useRef<Constellation[]>(constellations);
   const collapsedKeysRef = useRef<Set<string>>(new Set(collapsedKeys));
+  const nodeToCollapsedKeyRef = useRef<Map<string, string>>(new Map());
 
   useEffect(() => {
     nodesRef.current = nodes;
@@ -94,6 +95,15 @@ export function usePhysicsSync({
     panYRef.current = panY;
     constellationsRef.current = constellations;
     collapsedKeysRef.current = new Set(collapsedKeys);
+
+    // Map nodeId -> constellation key (only for currently collapsed clusters).
+    const nodeToCollapsedKey = new Map<string, string>();
+    for (const c of constellations) {
+      if (collapsedKeysRef.current.has(c.key)) {
+        for (const nid of c.nodeIds) nodeToCollapsedKey.set(nid, c.key);
+      }
+    }
+    nodeToCollapsedKeyRef.current = nodeToCollapsedKey;
 
     const q = searchQuery.trim().toLowerCase();
     if (!q) {
@@ -208,10 +218,12 @@ export function usePhysicsSync({
           // single corrupted frame can't permanently brick a node.
           sanitizeBody(body, nodeMeta.initialX, nodeMeta.initialY);
 
-          // Self-healing: if body is static but node is not pinned (and not dragging), restore it to dynamic
+          // Self-healing: if body is static but node is not pinned (and not dragging), restore it to dynamic.
+          // Skip members of a collapsed constellation — they are frozen on purpose until un-collapsed.
           const isPinned = nodeMeta.isPinned || false;
           const isDragging = (body as NodeBody).isDragging || false;
-          if (body.isStatic && !isPinned && !isDragging) {
+          const inCollapsed = nodeToCollapsedKeyRef.current.has(id);
+          if (body.isStatic && !isPinned && !isDragging && !inCollapsed) {
             Matter.Body.setStatic(body, false);
           }
 

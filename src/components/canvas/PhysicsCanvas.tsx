@@ -11,6 +11,7 @@ import { useMagneticForces } from '../../hooks/useMagneticForces';
 import { useConnectionDraw } from '../../hooks/useConnectionDraw';
 import { useCanvasCommands } from '../../hooks/useCanvasCommands';
 import { usePresentation } from '../../hooks/usePresentation';
+import { useStarDrag } from '../../hooks/useStarDrag';
 import { createNodeBody, destroyNodeBody, syncBodyPhysics, setBodyPinned, CATEGORY_PHYSICS, type NodeBody } from '../../physics/bodies';
 import { createSpringConstraint, destroyConstraint } from '../../physics/constraints';
 import { applyVortexSuction } from '../../physics/forces';
@@ -346,6 +347,33 @@ export function PhysicsCanvas() {
   // Hook for presentation / guided tour camera + keyboard controls (Idea 3)
   usePresentation({ bodiesRef, nodes, setZoom, setPan });
 
+  // Drag a collapsed constellation's star to move the whole cluster (formation preserved)
+  const { onStarPointerDown } = useStarDrag({
+    bodiesRef,
+    zoom,
+    panX,
+    panY,
+    constellations,
+    collapsedKeys,
+    onToggleCollapse: toggleCollapse,
+  });
+
+  // Freeze the members of a collapsed constellation so they hold their relative
+  // formation. Expanding restores them (the RAF self-heal un-freezes bodies that
+  // are no longer collapsed and not individually pinned).
+  useEffect(() => {
+    const collapsedSet = new Set(collapsedKeys);
+    for (const c of constellations) {
+      if (!collapsedSet.has(c.key)) continue;
+      for (const id of c.nodeIds) {
+        const body = bodiesRef.current.get(id);
+        if (body && !body.isStatic) {
+          Matter.Body.setStatic(body, true);
+        }
+      }
+    }
+  }, [collapsedKeys, constellations, bodiesRef]);
+
   // Hook for magnetic attraction/repulsión between nodes
   useMagneticForces({
     engineRef,
@@ -668,7 +696,7 @@ export function PhysicsCanvas() {
           haloRefs={haloRefs}
           starRefs={starRefs}
           collapsedKeys={collapsedKeys}
-          onToggleCollapse={toggleCollapse}
+          onStarPointerDown={onStarPointerDown}
         />
 
         {/* SVG connection lines overlay */}

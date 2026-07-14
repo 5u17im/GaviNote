@@ -23,18 +23,23 @@
   padding: 0;
 }
 
+html {
+  overflow: hidden;
+  height: 100%;
+  width: 100%;
+}
+
 body {
   background-color: var(--background);
   color: var(--foreground);
   font-family: var(--font-inter), ui-sans-serif, system-ui;
   overflow: hidden;
-  /* Dynamic viewport units so the layout matches the browser's *visible* area
-     (excludes address bar / toolbars on mobile), preventing the UI from being
-     covered by the browser chrome. Fallback to 100vh/vw for old engines. */
-  height: 100vh;
-  height: 100dvh;
-  width: 100vw;
-  width: 100dvw;
+  /* Pin the app shell to the *visible* viewport. Using position:fixed + inset:0
+     makes the body exactly the visible area (excludes any scrollbar gutter) so
+     `position: fixed` HUD elements never get anchored to a wider layout viewport
+     — which was clipping the left/right edges. */
+  position: fixed;
+  inset: 0;
 }
 
 /* Glassmorphism custom classes */

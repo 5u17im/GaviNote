@@ -12,7 +12,7 @@ const PhysicsCanvas = dynamic(
 
 export default function Home() {
   return (
-    <main className="w-dvw h-dvh bg-[#0B0F19]">
+    <main className="w-full h-full bg-[#0B0F19]">
       <PhysicsCanvas />
       <WelcomeSplash />
     </main>

@@ -617,7 +617,7 @@ export function PhysicsCanvas() {
       onPointerMove={handlePanMove}
       onPointerUp={handlePanEnd}
       onPointerCancel={handlePanEnd}
-      className={`relative w-dvw h-dvh overflow-hidden bg-[#0B0F19] ${
+      className={`relative w-full h-full overflow-hidden bg-[#0B0F19] ${
         isSpacePressed ? 'cursor-grab active:cursor-grabbing' : 'cursor-default'
       }`}
       style={{ touchAction: 'none' }}

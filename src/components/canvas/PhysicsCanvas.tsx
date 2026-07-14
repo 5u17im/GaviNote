@@ -5,10 +5,12 @@ import Matter from 'matter-js';
 import { useGraviStore } from '../../store/useGraviStore';
 import { usePhysicsEngine } from '../../hooks/usePhysicsEngine';
 import { usePhysicsSync } from '../../hooks/usePhysicsSync';
+import type { ConnectionPathRefs } from '../../hooks/usePhysicsSync';
 import { useDragNode } from '../../hooks/useDragNode';
 import { useMagneticForces } from '../../hooks/useMagneticForces';
 import { useConnectionDraw } from '../../hooks/useConnectionDraw';
-import { createNodeBody, destroyNodeBody, CATEGORY_PHYSICS } from '../../physics/bodies';
+import { useCanvasCommands } from '../../hooks/useCanvasCommands';
+import { createNodeBody, destroyNodeBody, CATEGORY_PHYSICS, type NodeBody } from '../../physics/bodies';
 import { createSpringConstraint, destroyConstraint } from '../../physics/constraints';
 import { applyVortexSuction } from '../../physics/forces';
 import { INITIAL_DEMO_NODES, INITIAL_DEMO_CONNECTIONS } from './DemoNodes';
@@ -22,6 +24,9 @@ import { NodeContextMenu } from '../nodes/NodeContextMenu';
 import { DisintegrationEffect, triggerDisintegration } from '../particles/DisintegrationEffect';
 import { CATEGORY_INFO } from '../nodes/registry';
 import { calculateOptimalDimensions } from '../../utils/dimensions';
+import { logError } from '../../utils/logger';
+import { validateSnapshot, serializeSnapshot } from '../../utils/serializer';
+import { commandBus } from '../../utils/commandBus';
 
 export function PhysicsCanvas() {
   const containerRef = useRef<HTMLDivElement | null>(null);
@@ -64,6 +69,8 @@ export function PhysicsCanvas() {
   const constraintsRef = useRef<Map<string, Matter.Constraint>>(new Map());
   // Registry of nodeId -> DOM Element
   const domRefs = useRef<Map<string, HTMLElement>>(new Map());
+  // Registry of connectionId -> SVG path elements (avoids getElementById per frame)
+  const svgRefs = useRef<Map<string, ConnectionPathRefs>>(new Map());
 
   // Hook for pointer drag handler — move/up events are now registered on window
   // directly inside the hook to prevent the "wrong card moves" bug
@@ -92,36 +99,49 @@ export function PhysicsCanvas() {
     startPanY: 0,
   });
 
+  // Multi-touch tracking for pinch-to-zoom (CU-09 / RNF-05)
+  const pointersRef = useRef<Map<number, { x: number; y: number }>>(new Map());
+  const pinchRef = useRef<{ startDist: number; startZoom: number } | null>(null);
+
   // Spacebar tracking
   const [isSpacePressed, setIsSpacePressed] = useState(false);
   const [contextMenu, setContextMenu] = useState<{ nodeId: string; x: number; y: number } | null>(null);
+
+  // Viewport size tracked in state so the world transform re-centers on window resize
+  const [viewport, setViewport] = useState(() => ({
+    width: typeof window !== 'undefined' ? window.innerWidth : 0,
+    height: typeof window !== 'undefined' ? window.innerHeight : 0,
+  }));
+
+  useEffect(() => {
+    const handleResize = () => {
+      setViewport({ width: window.innerWidth, height: window.innerHeight });
+    };
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
 
   // Restore state from Local Storage or load demo on mount
   useEffect(() => {
     const saved = localStorage.getItem('gravinote-saved-state');
     if (saved) {
       try {
-        const parsed = JSON.parse(saved);
-        if (Array.isArray(parsed.nodes)) {
+        const snapshot = validateSnapshot(JSON.parse(saved));
+        if (snapshot && snapshot.nodes.length > 0) {
           // Auto-adjust dimensions of stored nodes to prevent text clipping
-          const updatedNodes = parsed.nodes.map((node: unknown) => {
-            const n = node as Record<string, unknown>;
-            const dims = calculateOptimalDimensions(
-              typeof n.title === 'string' ? n.title : '',
-              typeof n.content === 'string' ? n.content : '',
-              Array.isArray(n.tags) ? (n.tags as string[]) : []
-            );
+          const updatedNodes = snapshot.nodes.map((node) => {
+            const dims = calculateOptimalDimensions(node.title, node.content, node.tags);
             return {
-              ...n,
+              ...node,
               width: dims.width,
               height: dims.height,
             };
           });
-          loadState(updatedNodes, parsed.connections || []);
+          loadState(updatedNodes, snapshot.connections);
           return;
         }
       } catch (err) {
-        console.error("Failed to restore saved local storage state:", err);
+        logError("Failed to restore saved local storage state:", err);
       }
     }
     
@@ -150,10 +170,7 @@ export function PhysicsCanvas() {
           (c) => activeNodeIds.has(c.sourceId) && activeNodeIds.has(c.targetId)
         );
 
-        const dataToSave = {
-          nodes: activeNodes,
-          connections: activeConnections,
-        };
+        const dataToSave = serializeSnapshot(activeNodes, activeConnections);
         localStorage.setItem('gravinote-saved-state', JSON.stringify(dataToSave));
       }, 500); // 500ms debounce
     });
@@ -190,7 +207,7 @@ export function PhysicsCanvas() {
         currentBodies.set(node.id, body);
       } else {
         const body = currentBodies.get(node.id)!;
-        const bodyWithData = body as Matter.Body & { userData: { width: number; height: number } };
+        const bodyWithData = body as NodeBody;
         
         // Sync static state dynamically (except when dragging)
         const isPinned = node.isPinned || false;
@@ -293,88 +310,15 @@ export function PhysicsCanvas() {
     }
   }, [connections, nodes, engineRef]);
 
-  // Command Listener: Big Bang (applies radial forces)
-  useEffect(() => {
-    const handleBigBang = () => {
-      const bodies = Array.from(bodiesRef.current.values());
-      bodies.forEach((body) => {
-        Matter.Body.setVelocity(body, {
-          x: (Math.random() - 0.5) * 16,
-          y: (Math.random() - 0.5) * 16,
-        });
-      });
-    };
-
-    window.addEventListener('trigger-bigbang', handleBigBang);
-    return () => window.removeEventListener('trigger-bigbang', handleBigBang);
-  }, []);
-
-  // Command Listener: Clear Canvas (triggers explosions on all nodes, then clears store)
-  useEffect(() => {
-    const handleClearCanvas = () => {
-      const bodies = bodiesRef.current;
-      
-      bodies.forEach((body, nodeId) => {
-        const node = nodes.find((n) => n.id === nodeId);
-        if (node) {
-          const color = CATEGORY_INFO[node.category]?.color || '#00E5FF';
-          triggerDisintegration(body.position.x, body.position.y, color);
-        }
-      });
-
-      // Clear the store after a slight delay to allow explosion particles to render
-      setTimeout(() => {
-        useGraviStore.getState().clearCanvas();
-      }, 400);
-    };
-
-    window.addEventListener('trigger-clear-canvas', handleClearCanvas);
-    return () => window.removeEventListener('trigger-clear-canvas', handleClearCanvas);
-  }, [nodes]);
-
-  // Command Listener: Zoom to Fit (calculates bounding box of all bodies)
-  useEffect(() => {
-    const handleZoomFit = () => {
-      const bodies = Array.from(bodiesRef.current.values());
-      if (bodies.length === 0) {
-        setZoom(1.0);
-        setPan(0, 0);
-        return;
-      }
-
-      let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
-      bodies.forEach((body) => {
-        minX = Math.min(minX, body.position.x);
-        maxX = Math.max(maxX, body.position.x);
-        minY = Math.min(minY, body.position.y);
-        maxY = Math.max(maxY, body.position.y);
-      });
-
-      const centerX = (minX + maxX) / 2;
-      const centerY = (minY + maxY) / 2;
-
-      // Box dimensions including node margins
-      const boxWidth = Math.max(100, maxX - minX + 300);
-      const boxHeight = Math.max(100, maxY - minY + 200);
-
-      const zoomX = (window.innerWidth - 120) / boxWidth;
-      const zoomY = (window.innerHeight - 120) / boxHeight;
-      
-      const newZoom = Math.min(Math.max(Math.min(zoomX, zoomY), 0.3), 1.25);
-
-      setZoom(newZoom);
-      setPan(-centerX * newZoom, -centerY * newZoom);
-    };
-
-    window.addEventListener('trigger-zoom-fit', handleZoomFit);
-    return () => window.removeEventListener('trigger-zoom-fit', handleZoomFit);
-  }, [setZoom, setPan]);
+  // Global canvas commands (Big Bang, Clear, Zoom-to-Fit) via the typed command bus
+  useCanvasCommands({ bodiesRef, nodes, setZoom, setPan });
 
   // Hook for DOM & SVG coordinates synchronization (Runs RAF loop)
   usePhysicsSync({
     engineRef,
     bodiesRef,
     domRefs,
+    svgRefs,
     nodes,
     connections,
     zoom,
@@ -515,8 +459,26 @@ export function PhysicsCanvas() {
     setZoom((z) => z + direction * zoomFactor);
   };
 
+  // Distance between the two active pointers (used for pinch-to-zoom)
+  const pinchDistance = () => {
+    const pts = Array.from(pointersRef.current.values());
+    if (pts.length < 2) return 0;
+    return Math.hypot(pts[0].x - pts[1].x, pts[0].y - pts[1].y);
+  };
+
   // Pan background pointer handlers
   const handlePanStart = (e: React.PointerEvent) => {
+    pointersRef.current.set(e.pointerId, { x: e.clientX, y: e.clientY });
+
+    // A second finger down starts a pinch gesture and cancels any active pan
+    if (pointersRef.current.size === 2) {
+      panDragRef.current.isDragging = false;
+      pinchRef.current = { startDist: pinchDistance(), startZoom: zoom };
+      selectNode(null);
+      e.stopPropagation();
+      return;
+    }
+
     const isMiddleClick = e.button === 1;
     const isBackgroundLeftClick = e.button === 0 && e.target === containerRef.current;
 
@@ -539,6 +501,20 @@ export function PhysicsCanvas() {
   };
 
   const handlePanMove = (e: React.PointerEvent) => {
+    if (pointersRef.current.has(e.pointerId)) {
+      pointersRef.current.set(e.pointerId, { x: e.clientX, y: e.clientY });
+    }
+
+    // Pinch-to-zoom: scale zoom by the ratio of current/initial finger distance
+    if (pinchRef.current && pointersRef.current.size >= 2) {
+      const dist = pinchDistance();
+      if (pinchRef.current.startDist > 0) {
+        const ratio = dist / pinchRef.current.startDist;
+        setZoom(pinchRef.current.startZoom * ratio);
+      }
+      return;
+    }
+
     if (panDragRef.current.isDragging) {
       const dx = e.clientX - panDragRef.current.startX;
       const dy = e.clientY - panDragRef.current.startY;
@@ -552,6 +528,13 @@ export function PhysicsCanvas() {
   };
 
   const handlePanEnd = (e: React.PointerEvent) => {
+    pointersRef.current.delete(e.pointerId);
+
+    // Leaving fewer than two pointers ends the pinch gesture
+    if (pointersRef.current.size < 2) {
+      pinchRef.current = null;
+    }
+
     if (panDragRef.current.isDragging) {
       try {
         if (containerRef.current) {
@@ -585,8 +568,40 @@ export function PhysicsCanvas() {
     }
   };
 
-  const cx = window.innerWidth / 2;
-  const cy = window.innerHeight / 2;
+  // Keyboard: delete selected node (Supr/Backspace) and deselect (Escape) — RNF-02
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      const active = document.activeElement;
+      const isTyping =
+        active instanceof HTMLInputElement || active instanceof HTMLTextAreaElement;
+      if (isTyping) return;
+
+      if ((e.key === 'Delete' || e.key === 'Backspace') && selectedId) {
+        e.preventDefault();
+        handleRemoveNode(selectedId);
+        selectNode(null);
+      } else if (e.key === 'Escape' && selectedId) {
+        selectNode(null);
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedId]);
+
+  // Move DOM focus to the selected node so keyboard users keep context (RNF-02)
+  useEffect(() => {
+    if (selectedId) {
+      const el = domRefs.current.get(selectedId);
+      if (el && document.activeElement !== el) {
+        el.focus({ preventScroll: true });
+      }
+    }
+  }, [selectedId]);
+
+  const cx = viewport.width / 2;
+  const cy = viewport.height / 2;
 
   return (
     <div
@@ -596,6 +611,7 @@ export function PhysicsCanvas() {
       onPointerDown={handlePanStart}
       onPointerMove={handlePanMove}
       onPointerUp={handlePanEnd}
+      onPointerCancel={handlePanEnd}
       className={`relative w-screen h-screen overflow-hidden bg-[#0B0F19] ${
         isSpacePressed ? 'cursor-grab active:cursor-grabbing' : 'cursor-default'
       }`}
@@ -622,6 +638,7 @@ export function PhysicsCanvas() {
           drawingState={connDraw.drawingState}
           onCycleConnection={cycleConnection}
           onRemoveConnection={removeConnection}
+          svgRefs={svgRefs}
         />
 
         {/* Disintegration particles canvas layer */}
@@ -676,8 +693,7 @@ export function PhysicsCanvas() {
           y={contextMenu.y}
           onClose={() => setContextMenu(null)}
           onEdit={() => {
-            const event = new CustomEvent(`edit-node-${contextMenu.nodeId}`);
-            window.dispatchEvent(event);
+            commandBus.emit('editNode', contextMenu.nodeId);
             setContextMenu(null);
           }}
           onDelete={() => {

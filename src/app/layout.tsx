@@ -1,5 +1,25 @@
 import type { Metadata } from "next";
+import { DM_Serif_Display, Inter, JetBrains_Mono } from "next/font/google";
 import "./globals.css";
+
+const inter = Inter({
+  subsets: ["latin"],
+  variable: "--font-inter",
+  display: "swap",
+});
+
+const dmSerif = DM_Serif_Display({
+  weight: "400",
+  subsets: ["latin"],
+  variable: "--font-dm-serif",
+  display: "swap",
+});
+
+const jetBrainsMono = JetBrains_Mono({
+  subsets: ["latin"],
+  variable: "--font-jetbrains",
+  display: "swap",
+});
 
 export const metadata: Metadata = {
   title: "GraviNote — Sistema de Ideación en Gravedad Cero",
@@ -15,7 +35,7 @@ export default function RootLayout({
   return (
     <html
       lang="es"
-      className="h-full antialiased"
+      className={`h-full antialiased ${inter.variable} ${dmSerif.variable} ${jetBrainsMono.variable}`}
     >
       <body className="min-h-full bg-[#0B0F19] text-[#F0F4FF] font-sans overflow-hidden select-none">
         {children}

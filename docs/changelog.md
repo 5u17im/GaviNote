@@ -7,6 +7,30 @@ Todos los cambios notables en este proyecto serán documentados en este archivo.
 
 ---
 
+## [1.1.0] - 2026-07-13
+
+### Añadido
+- **Suite de Pruebas (Vitest):** Configuración `vitest.config.ts` (jsdom) y 33 pruebas unitarias sobre `sanitize`, `serializer`, el store de Zustand y las fuerzas físicas. Scripts `test` y `test:watch`.
+- **Bus de Comandos Tipado:** Nuevo `utils/commandBus.ts` que reemplaza los `window` CustomEvents (`trigger-bigbang`, `trigger-clear-canvas`, `trigger-zoom-fit`, `edit-node-*`) con un bus seguro en tipos y testeable.
+- **Hook `useCanvasCommands`:** Extrae los listeners de comandos globales (Big Bang, Limpiar, Zoom-to-Fit) fuera de `PhysicsCanvas`.
+- **Utilidades de Robustez:** `utils/logger.ts` (logging solo en desarrollo) y `utils/sanitize.ts` (saneo y límites de texto para títulos, contenido y etiquetas).
+- **Versionado de Esquema:** `serializer.ts` incorpora `SCHEMA_VERSION`, `validateSnapshot` y `serializeSnapshot` para importaciones seguras y compatibilidad futura.
+- **Accesibilidad (RNF-02):** `NodeCard` navegable por teclado (`tabIndex`, `role`, atributos `aria-*`, Enter para editar); atajos globales de teclado (Supr/Backspace elimina, Escape deselecciona).
+- **Tipo `NodeBody`:** Tipo dedicado en `bodies.ts` que elimina los casts `as unknown as { ... }`.
+
+### Cambiado
+- **Rendimiento de Fuerzas:** `forces.ts` migrado de O(N²) a una **rejilla espacial (spatial hash grid)**, reduciendo drásticamente el coste con muchos nodos.
+- **Sincronización RAF:** `usePhysicsSync` usa un `Map` de nodos por frame y refs de SVG cacheadas en lugar de búsquedas y consultas al DOM repetidas.
+- **Fuentes:** Migradas de `@import` de Google Fonts a `next/font/google` (auto-hospedadas) con variables CSS dedicadas.
+- **Store en Slices:** `useGraviStore` recompuesto a partir de `nodesSlice`, `connectionsSlice` y `physicsSlice` conforme a la arquitectura documentada.
+- **Viewport Responsivo:** `PhysicsCanvas` escucha `resize` y usa dimensiones de viewport en estado en lugar de leer `window.innerWidth/Height` directamente.
+
+### Corregido
+- **Persistencia Corrupta:** La carga desde `localStorage` ahora valida y sanea el snapshot, descartando conexiones huérfanas y datos inválidos.
+- **Advertencia de Linter:** Documentado el `eslint-disable` del efecto de inicialización en `usePhysicsEngine`.
+
+---
+
 ## [1.0.0] - 2026-07-10
 
 ### Añadido

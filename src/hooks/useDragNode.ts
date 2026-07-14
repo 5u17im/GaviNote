@@ -1,6 +1,8 @@
 import { useRef, useEffect } from 'react';
 import Matter from 'matter-js';
 import { useGraviStore } from '../store/useGraviStore';
+import { logError } from '../utils/logger';
+import type { NodeBody } from '../physics/bodies';
 
 interface UseDragNodeProps {
   engineRef: React.MutableRefObject<Matter.Engine | null>;
@@ -71,7 +73,7 @@ export function useDragNode({ engineRef, bodiesRef, constraintsRef, domRefs, zoo
           Matter.Body.setStatic(body, true);
           Matter.Body.setVelocity(body, { x: 0, y: 0 });
           Matter.Body.setAngularVelocity(body, 0);
-          (body as unknown as { isDragging?: boolean }).isDragging = true;
+          (body as NodeBody).isDragging = true;
 
           // Temporarily remove constraints connected to this body from the Matter.js world
           const world = engine.world;
@@ -104,7 +106,7 @@ export function useDragNode({ engineRef, bodiesRef, constraintsRef, domRefs, zoo
         info.lastX = newX;
         info.lastY = newY;
       } catch (err) {
-        console.error("Error in drag onMove handler:", err);
+        logError("Error in drag onMove handler:", err);
       }
     };
 
@@ -117,7 +119,7 @@ export function useDragNode({ engineRef, bodiesRef, constraintsRef, domRefs, zoo
         const body = bodiesRef.current.get(info.nodeId);
 
         if (body) {
-          delete (body as unknown as { isDragging?: boolean }).isDragging;
+          delete (body as NodeBody).isDragging;
         }
 
         if (body && info.hasCaptured) {
@@ -186,7 +188,7 @@ export function useDragNode({ engineRef, bodiesRef, constraintsRef, domRefs, zoo
           try { info.captureEl.releasePointerCapture(e.pointerId); } catch { /* ignore */ }
         }
       } catch (err) {
-        console.error("Error in drag onUp handler:", err);
+        logError("Error in drag onUp handler:", err);
       } finally {
         dragInfo.current = null;
       }

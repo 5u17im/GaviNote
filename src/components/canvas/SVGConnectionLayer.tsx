@@ -3,12 +3,14 @@
 import React from 'react';
 import { Connection } from '../../types/node.types';
 import { ConnectionDrawState } from '../../hooks/useConnectionDraw';
+import type { ConnectionPathRefs } from '../../hooks/usePhysicsSync';
 
 interface SVGConnectionLayerProps {
   connections: Connection[];
   drawingState: ConnectionDrawState | null;
   onCycleConnection: (id: string) => void;
   onRemoveConnection: (id: string) => void;
+  svgRefs: React.MutableRefObject<Map<string, ConnectionPathRefs>>;
 }
 
 export function SVGConnectionLayer({
@@ -16,7 +18,20 @@ export function SVGConnectionLayer({
   drawingState,
   onCycleConnection,
   onRemoveConnection,
+  svgRefs,
 }: SVGConnectionLayerProps) {
+
+  // Register/unregister path elements so the RAF sync loop reads cached refs
+  // instead of calling document.getElementById on every frame.
+  const registerRef = (id: string, key: keyof ConnectionPathRefs) => (el: SVGPathElement | null) => {
+    const entry = svgRefs.current.get(id) ?? { path: null, thick: null };
+    entry[key] = el;
+    if (!entry.path && !entry.thick) {
+      svgRefs.current.delete(id);
+    } else {
+      svgRefs.current.set(id, entry);
+    }
+  };
   
   // Style mappings based on connection type
   const getStyleProps = (type: Connection['type']) => {
@@ -58,7 +73,7 @@ export function SVGConnectionLayer({
           <g key={conn.id}>
             {/* Click helper path: thicker, transparent, captures stroke mouse pointer events */}
             <path
-              id={`thick-${conn.id}`}
+              ref={registerRef(conn.id, 'thick')}
               fill="none"
               stroke="transparent"
               strokeWidth={16}
@@ -76,7 +91,7 @@ export function SVGConnectionLayer({
             />
             {/* Visual visible path */}
             <path
-              id={`path-${conn.id}`}
+              ref={registerRef(conn.id, 'path')}
               fill="none"
               stroke={visual.stroke}
               strokeWidth={visual.strokeWidth}

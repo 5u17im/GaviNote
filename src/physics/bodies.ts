@@ -1,6 +1,15 @@
 import Matter from 'matter-js';
 import type { NodeCategory } from '../types/node.types';
 
+/**
+ * A Matter.Body augmented with GraviNote-specific metadata.
+ * Avoids scattered `as unknown as { ... }` casts across the codebase.
+ */
+export interface NodeBody extends Matter.Body {
+  userData: { width: number; height: number };
+  isDragging?: boolean;
+}
+
 export const CATEGORY_PHYSICS: Record<NodeCategory, {
   mass: number;
   frictionAir: number;
@@ -53,7 +62,7 @@ export function createNodeBody(
   category: NodeCategory,
   width?: number,
   height?: number
-): Matter.Body {
+): NodeBody {
   const config = CATEGORY_PHYSICS[category] || CATEGORY_PHYSICS.idea;
   const w = width ?? config.width;
   const h = height ?? config.height;
@@ -68,10 +77,10 @@ export function createNodeBody(
     chamfer: { radius: 12 },
   };
 
-  const body = Matter.Bodies.rectangle(x, y, w, h, options);
-  
+  const body = Matter.Bodies.rectangle(x, y, w, h, options) as NodeBody;
+
   // Store dimensions inside userData for dynamic scaling detection
-  (body as Matter.Body & { userData: { width: number; height: number } }).userData = { width: w, height: h };
+  body.userData = { width: w, height: h };
 
   // Matter.js automatically overrides mass based on area/density unless we set it after creation
   Matter.Body.setMass(body, config.mass);

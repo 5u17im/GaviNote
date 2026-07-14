@@ -19,10 +19,7 @@ export function usePhysicsEngine(gravityY: number) {
     runnerRef.current = runner;
     Matter.Runner.run(runner, engine);
 
-    console.log("Matter.js Engine started successfully.");
-
     return () => {
-      console.log("Cleaning up Matter.js Engine...");
       if (runnerRef.current) {
         Matter.Runner.stop(runnerRef.current);
       }
@@ -32,7 +29,10 @@ export function usePhysicsEngine(gravityY: number) {
         Matter.Engine.clear(engineRef.current);
       }
     };
-  }, []); // Run once on mount
+    // gravityY is intentionally excluded: the engine is created once on mount and
+    // gravity updates are handled by the dedicated effect below.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // Update gravity dynamically when config changes
   useEffect(() => {

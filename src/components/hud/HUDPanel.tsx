@@ -3,6 +3,7 @@
 import React, { useState, useRef } from 'react';
 import { useGraviStore } from '../../store/useGraviStore';
 import { exportStateToJSON, importStateFromJSON } from '../../utils/serializer';
+import { commandBus } from '../../utils/commandBus';
 import { 
   Settings, 
   Trash2, 
@@ -39,19 +40,19 @@ export function HUDPanel() {
 
   // Trigger Big Bang
   const handleBigBang = () => {
-    window.dispatchEvent(new Event('trigger-bigbang'));
+    commandBus.emit('bigBang');
   };
 
   // Zoom to Fit
   const handleZoomFit = () => {
-    window.dispatchEvent(new Event('trigger-zoom-fit'));
+    commandBus.emit('zoomFit');
   };
 
   // Clear Canvas (with disintegration effect on all nodes)
   const handleClearCanvas = () => {
     if (nodes.length === 0) return;
     if (confirm('¿Estás seguro de que deseas limpiar todo el lienzo?')) {
-      window.dispatchEvent(new Event('trigger-clear-canvas'));
+      commandBus.emit('clearCanvas');
     }
   };
 
@@ -76,8 +77,9 @@ export function HUDPanel() {
     exportStateToJSON(nodes, connections);
   };
 
-  // PNG Capture Notice
-  const handleExportPNG = () => {
+  // Image capture guidance. Exporting to PNG is out of scope for V1 (see PRD §6);
+  // we point the user to reliable OS-level capture instead of bundling html2canvas.
+  const handleCaptureHelp = () => {
     alert(
       "📸 Para capturar tu mapa mental con la máxima fidelidad:\n\n" +
       "1. Te recomendamos presionar 'Ctrl + P' para guardar el lienzo completo como PDF.\n" +
@@ -112,46 +114,56 @@ export function HUDPanel() {
         <button
           onClick={handleQuickAdd}
           title="Crear Nota al Centro"
+          aria-label="Crear nota al centro"
           className="p-3 rounded-md border border-[#222733] bg-[#0D0F17]/95 hover:bg-[#161A26] hover:border-white/10 text-white transition-all shadow-xl hover:scale-105 active:scale-95 flex items-center justify-center cursor-pointer backdrop-blur-md"
         >
-          <Plus size={16} />
+          <Plus size={16} aria-hidden="true" />
         </button>
 
         {/* Zoom to Fit */}
         <button
           onClick={handleZoomFit}
           title="Centrar Cámara"
+          aria-label="Centrar cámara en el contenido"
           className="p-3 rounded-md border border-[#222733] bg-[#0D0F17]/95 hover:bg-[#161A26] hover:border-white/10 text-white transition-all shadow-xl hover:scale-105 active:scale-95 flex items-center justify-center cursor-pointer backdrop-blur-md"
         >
-          <Maximize2 size={16} />
+          <Maximize2 size={16} aria-hidden="true" />
         </button>
 
         {/* Toggle Menu Panel */}
         <button
           onClick={() => setIsOpen(!isOpen)}
           title="Configuración de Física y Guardado"
+          aria-label="Configuración de física y guardado"
+          aria-expanded={isOpen}
+          aria-controls="hud-settings-panel"
           className={`p-3 rounded-md border transition-all shadow-xl hover:scale-105 active:scale-95 flex items-center justify-center cursor-pointer backdrop-blur-md ${
             isOpen 
               ? 'bg-[#161A26] border-[#00E5FF]/40 text-[#00E5FF]' 
               : 'border-[#222733] bg-[#0D0F17]/95 hover:bg-[#161A26] hover:border-white/10 text-white'
           }`}
         >
-          <Settings size={16} className={isOpen ? 'animate-spin-slow' : ''} />
+          <Settings size={16} aria-hidden="true" className={isOpen ? 'animate-spin-slow' : ''} />
         </button>
 
         {/* Help Panel Toggle */}
         <button
           onClick={() => setShowHelp(true)}
           title="Ver Atajos y Guía"
+          aria-label="Ver atajos y guía"
+          aria-haspopup="dialog"
           className="p-3 rounded-md border border-[#222733] bg-[#0D0F17]/95 hover:bg-[#161A26] hover:border-white/10 text-white/70 hover:text-white transition-all shadow-xl hover:scale-105 active:scale-95 flex items-center justify-center cursor-pointer backdrop-blur-md"
         >
-          <HelpCircle size={16} />
+          <HelpCircle size={16} aria-hidden="true" />
         </button>
       </div>
 
       {/* 2. Settings Sidebar Panel */}
       {isOpen && (
         <div 
+          id="hud-settings-panel"
+          role="region"
+          aria-label="Telemetría física y guardado"
           className="absolute top-24 right-6 z-40 w-80 rounded-md border border-[#222733] bg-[#0D0F17]/95 p-5 shadow-2xl shadow-black/80 backdrop-blur-md flex flex-col gap-4.5 animate-in slide-in-from-top-4 duration-200 pointer-events-auto"
           style={{ maxHeight: 'calc(100vh - 120px)', overflowY: 'auto' }}
         >
@@ -163,8 +175,8 @@ export function HUDPanel() {
                 TELEMETRÍA FÍSICA
               </span>
             </div>
-            <button onClick={() => setIsOpen(false)} className="text-white/40 hover:text-white transition-colors cursor-pointer p-1 hover:bg-white/5 rounded-md">
-              <X size={14} />
+            <button onClick={() => setIsOpen(false)} aria-label="Cerrar panel de configuración" className="text-white/40 hover:text-white transition-colors cursor-pointer p-1 hover:bg-white/5 rounded-md">
+              <X size={14} aria-hidden="true" />
             </button>
           </div>
 
@@ -187,6 +199,8 @@ export function HUDPanel() {
                 step="0.05"
                 value={gravity}
                 onChange={(e) => setGravity(parseFloat(e.target.value))}
+                aria-label="Gravedad"
+                aria-valuetext={`${gravity.toFixed(2)} G`}
                 className="w-full hud-slider mt-1.5 cursor-pointer"
               />
               <span className="text-[9px] text-neutral-600 font-mono italic mt-0.5">0.00 (Espacio) - 1.00 (Tierra)</span>
@@ -207,6 +221,8 @@ export function HUDPanel() {
                 step="0.001"
                 value={airFriction}
                 onChange={(e) => setAirFriction(parseFloat(e.target.value))}
+                aria-label="Fricción de aire"
+                aria-valuetext={`${(airFriction * 1000).toFixed(0)} ms`}
                 className="w-full hud-slider mt-1.5 cursor-pointer"
               />
               <span className="text-[9px] text-neutral-600 font-mono italic mt-0.5">Menor fricción = mayor inercia</span>
@@ -227,6 +243,8 @@ export function HUDPanel() {
                 step="0.2"
                 value={magnetStrength}
                 onChange={(e) => setMagnetStrength(parseFloat(e.target.value))}
+                aria-label="Fuerza magnética"
+                aria-valuetext={`${magnetStrength.toFixed(1)}x`}
                 className="w-full hud-slider mt-1.5 cursor-pointer"
               />
               <span className="text-[9px] text-neutral-600 font-mono italic mt-0.5">Atracción por tags / Repulsión de colisión</span>
@@ -247,6 +265,8 @@ export function HUDPanel() {
                 step="0.05"
                 value={vortexGravity}
                 onChange={(e) => setVortexGravity(parseFloat(e.target.value))}
+                aria-label="Succión del vórtice"
+                aria-valuetext={`${(vortexGravity * 100).toFixed(0)}%`}
                 className="w-full hud-slider mt-1.5 cursor-pointer"
               />
               <span className="text-[9px] text-neutral-600 font-mono italic mt-0.5">Gravedad del hoyo negro al eliminar ideas</span>
@@ -300,11 +320,13 @@ export function HUDPanel() {
               </button>
 
               <button
-                onClick={handleExportPNG}
+                onClick={handleCaptureHelp}
+                title="Cómo capturar el lienzo como imagen"
+                aria-label="Cómo capturar el lienzo como imagen"
                 className="col-span-2 bg-[#0D0F17] hover:bg-[#161A26] font-mono text-xs text-neutral-300 py-2.5 cursor-pointer flex items-center justify-center gap-1.5 border-0 border-t border-[#222733]"
               >
-                <ImageIcon size={12} className="text-neutral-500" />
-                Exportar Imagen
+                <ImageIcon size={12} aria-hidden="true" className="text-neutral-500" />
+                Capturar Imagen
               </button>
             </div>
           </div>
@@ -314,7 +336,7 @@ export function HUDPanel() {
       {/* 3. Help Modal Overlay */}
       {showHelp && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 backdrop-blur-sm pointer-events-auto animate-in fade-in duration-200">
-          <div className="w-[460px] max-w-full rounded-md border border-[#222733] bg-[#0D0F17]/96 px-6 py-4 shadow-2xl shadow-black/80 flex flex-col gap-4 animate-in zoom-in-95 duration-200">
+          <div role="dialog" aria-modal="true" aria-label="Atajos y guía de pilotaje" className="w-[460px] max-w-full rounded-md border border-[#222733] bg-[#0D0F17]/96 px-6 py-4 shadow-2xl shadow-black/80 flex flex-col gap-4 animate-in zoom-in-95 duration-200">
             {/* Header */}
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
@@ -323,8 +345,8 @@ export function HUDPanel() {
                   TELEMETRÍA DE PILOTAJE
                 </h2>
               </div>
-              <button onClick={() => setShowHelp(false)} className="text-white/40 hover:text-white transition-colors cursor-pointer p-1 hover:bg-white/5 rounded-md">
-                <X size={16} />
+              <button onClick={() => setShowHelp(false)} aria-label="Cerrar guía" className="text-white/40 hover:text-white transition-colors cursor-pointer p-1 hover:bg-white/5 rounded-md">
+                <X size={16} aria-hidden="true" />
               </button>
             </div>
 
@@ -375,6 +397,12 @@ export function HUDPanel() {
                 </kbd>
               </div>
               <div className="flex items-center justify-between py-3 px-2 border-b border-neutral-800/80 text-xs text-neutral-300">
+                <span className="font-sans text-neutral-400">Zoom Táctil</span>
+                <kbd className="px-2 py-1 bg-neutral-900 border border-neutral-700/80 rounded text-[11px] font-mono text-neutral-200 shadow-sm">
+                  Pellizco (2 Dedos)
+                </kbd>
+              </div>
+              <div className="flex items-center justify-between py-3 px-2 border-b border-neutral-800/80 text-xs text-neutral-300">
                 <span className="font-sans text-neutral-400">Menú de Opciones</span>
                 <kbd className="px-2 py-1 bg-neutral-900 border border-neutral-700/80 rounded text-[11px] font-mono text-neutral-200 shadow-sm">
                   Clic Derecho (Nota)
@@ -383,7 +411,7 @@ export function HUDPanel() {
             </div>
 
             <div className="mt-4 py-3 text-center text-[10px] text-neutral-500 font-mono uppercase tracking-wider">
-              GraviNote por Nothing Sense · v1.0.0
+              GraviNote por Nothing Sense · v1.1.0
             </div>
           </div>
         </div>

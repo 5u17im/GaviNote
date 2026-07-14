@@ -6,6 +6,61 @@ const REPULSION_DISTANCE = 150;   // px - Min distance to prevent overlapping
 const ATTRACTION_BASE_STRENGTH = 0.00008;
 const REPULSION_BASE_STRENGTH = 0.0004;
 
+// Cell size equals the max interaction range so any pair within range falls in
+// the same or an adjacent grid cell — reduces the O(N^2) scan to near O(N).
+const CELL_SIZE = ATTRACTION_DISTANCE;
+
+interface GridEntry {
+  node: NodeMeta;
+  body: Matter.Body;
+}
+
+function applyPairForce(
+  a: GridEntry,
+  b: GridEntry,
+  attractionStrength: number,
+  repulsionStrength: number
+) {
+  const { node: nodeA, body: bodyA } = a;
+  const { node: nodeB, body: bodyB } = b;
+
+  // Skip if both are static
+  if (bodyA.isStatic && bodyB.isStatic) return;
+
+  const dx = bodyB.position.x - bodyA.position.x;
+  const dy = bodyB.position.y - bodyA.position.y;
+  const distance = Math.sqrt(dx * dx + dy * dy);
+  if (distance === 0) return;
+
+  // 1. Repulsion (Always active to prevent overlapping, regardless of tags)
+  if (distance < REPULSION_DISTANCE) {
+    const forceMagnitude = (1 - distance / REPULSION_DISTANCE) * repulsionStrength;
+    const fx = (dx / distance) * forceMagnitude;
+    const fy = (dy / distance) * forceMagnitude;
+
+    if (!bodyA.isStatic) Matter.Body.applyForce(bodyA, bodyA.position, { x: -fx, y: -fy });
+    if (!bodyB.isStatic) Matter.Body.applyForce(bodyB, bodyB.position, { x: fx, y: fy });
+    return;
+  }
+
+  // 2. Attraction (Only active if they share tags)
+  if (distance < ATTRACTION_DISTANCE) {
+    const sharedTags = nodeA.tags.some((tag) => nodeB.tags.includes(tag));
+    if (!sharedTags) return;
+
+    // Central ideas act as gravitational wells: 4x stronger attraction
+    const isAOrBCentral = nodeA.category === 'central' || nodeB.category === 'central';
+    const currentAttractionStrength = isAOrBCentral ? attractionStrength * 4 : attractionStrength;
+
+    const forceMagnitude = (distance / ATTRACTION_DISTANCE) * currentAttractionStrength;
+    const fx = (dx / distance) * forceMagnitude;
+    const fy = (dy / distance) * forceMagnitude;
+
+    if (!bodyA.isStatic) Matter.Body.applyForce(bodyA, bodyA.position, { x: fx, y: fy });
+    if (!bodyB.isStatic) Matter.Body.applyForce(bodyB, bodyB.position, { x: -fx, y: -fy });
+  }
+}
+
 export function applyMagneticForces(
   bodies: Map<string, Matter.Body>,
   nodes: NodeMeta[],
@@ -16,59 +71,49 @@ export function applyMagneticForces(
   const attractionStrength = ATTRACTION_BASE_STRENGTH * magnetMultiplier;
   const repulsionStrength = REPULSION_BASE_STRENGTH;
 
-  for (let i = 0; i < nodes.length; i++) {
-    for (let j = i + 1; j < nodes.length; j++) {
-      const nodeA = nodes[i];
-      const nodeB = nodes[j];
+  // Build a spatial hash grid: cellKey -> entries
+  const grid = new Map<string, GridEntry[]>();
+  const cellKey = (cx: number, cy: number) => `${cx},${cy}`;
 
-      // Skip deleting nodes
-      if (nodeA.isDeleting || nodeB.isDeleting) continue;
+  for (const node of nodes) {
+    if (node.isDeleting) continue;
+    const body = bodies.get(node.id);
+    if (!body) continue;
 
-      // Check if they share any tags
-      const sharedTags = nodeA.tags.some(tag => nodeB.tags.includes(tag));
-      
-      const bodyA = bodies.get(nodeA.id);
-      const bodyB = bodies.get(nodeB.id);
-      if (!bodyA || !bodyB) continue;
+    const cx = Math.floor(body.position.x / CELL_SIZE);
+    const cy = Math.floor(body.position.y / CELL_SIZE);
+    const key = cellKey(cx, cy);
+    const bucket = grid.get(key);
+    if (bucket) bucket.push({ node, body });
+    else grid.set(key, [{ node, body }]);
+  }
 
-      // Skip if both are static
-      if (bodyA.isStatic && bodyB.isStatic) continue;
+  // For each cell, compare against itself and the forward-half of its neighbors
+  // to evaluate every pair exactly once.
+  const NEIGHBOR_OFFSETS: Array<[number, number]> = [
+    [0, 0], [1, 0], [-1, 1], [0, 1], [1, 1],
+  ];
 
-      const dx = bodyB.position.x - bodyA.position.x;
-      const dy = bodyB.position.y - bodyA.position.y;
-      const distance = Math.sqrt(dx * dx + dy * dy);
+  for (const [key, bucket] of grid.entries()) {
+    const [cx, cy] = key.split(',').map(Number);
 
-      if (distance === 0) continue;
+    for (const [ox, oy] of NEIGHBOR_OFFSETS) {
+      const neighbor = grid.get(cellKey(cx + ox, cy + oy));
+      if (!neighbor) continue;
 
-      // 1. Repulsion (Always active to prevent overlapping, regardless of tags)
-      if (distance < REPULSION_DISTANCE) {
-        const forceMagnitude = (1 - distance / REPULSION_DISTANCE) * repulsionStrength;
-        const fx = (dx / distance) * forceMagnitude;
-        const fy = (dy / distance) * forceMagnitude;
-
-        if (!bodyA.isStatic) {
-          Matter.Body.applyForce(bodyA, bodyA.position, { x: -fx, y: -fy });
+      if (ox === 0 && oy === 0) {
+        // Same cell: unique pairs within the bucket
+        for (let i = 0; i < bucket.length; i++) {
+          for (let j = i + 1; j < bucket.length; j++) {
+            applyPairForce(bucket[i], bucket[j], attractionStrength, repulsionStrength);
+          }
         }
-        if (!bodyB.isStatic) {
-          Matter.Body.applyForce(bodyB, bodyB.position, { x: fx, y: fy });
-        }
-      }
-      
-      // 2. Attraction (Only active if they share tags)
-      else if (sharedTags && distance < ATTRACTION_DISTANCE) {
-        // Central ideas act as gravitational wells: 4x stronger attraction
-        const isAOrBCentral = nodeA.category === 'central' || nodeB.category === 'central';
-        const currentAttractionStrength = isAOrBCentral ? attractionStrength * 4 : attractionStrength;
-
-        const forceMagnitude = (distance / ATTRACTION_DISTANCE) * currentAttractionStrength;
-        const fx = (dx / distance) * forceMagnitude;
-        const fy = (dy / distance) * forceMagnitude;
-
-        if (!bodyA.isStatic) {
-          Matter.Body.applyForce(bodyA, bodyA.position, { x: fx, y: fy });
-        }
-        if (!bodyB.isStatic) {
-          Matter.Body.applyForce(bodyB, bodyB.position, { x: -fx, y: -fy });
+      } else {
+        // Different cell: all cross pairs (each neighbor pair visited once via offsets)
+        for (const a of bucket) {
+          for (const b of neighbor) {
+            applyPairForce(a, b, attractionStrength, repulsionStrength);
+          }
         }
       }
     }

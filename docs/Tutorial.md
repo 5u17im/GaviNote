@@ -20,143 +20,77 @@ Antes de empezar, ten en cuenta los tres principios que gobiernan GraviNote:
 
 ---
 
-### 1.1 Cómo Agregar un Nuevo Tipo de Nodo
+### 1.1 Cómo Agregar una Nueva Categoría de Nodo
 
-Este proceso requiere exactamente **3 archivos** y ninguna modificación al motor de física:
+> **Nota de arquitectura (v1.1.0):** GraviNote no usa componentes por-tipo (`IdeaNode`, etc.). `NodeCard` renderiza todos los nodos y se estiliza según la metadata de la categoría. Añadir una categoría requiere **3 archivos** y ninguna modificación al motor de física.
 
 ---
 
-#### Paso 1: Define el tipo en `node.types.ts`
+#### Paso 1: Define la categoría en `node.types.ts`
 
 ```typescript
 // src/types/node.types.ts
 
 // ANTES:
-export type NodeCategory = 'idea' | 'tarea' | 'referencia' | 'alerta';
+export type NodeCategory = 'central' | 'idea' | 'tarea' | 'referencia' | 'alerta';
 
-// DESPUÉS (agregando el nuevo tipo "pregunta"):
-export type NodeCategory = 'idea' | 'tarea' | 'referencia' | 'alerta' | 'pregunta';
+// DESPUÉS (agregando "pregunta"):
+export type NodeCategory = 'central' | 'idea' | 'tarea' | 'referencia' | 'alerta' | 'pregunta';
 ```
 
 ---
 
-#### Paso 2: Crea el componente visual del nodo
+#### Paso 2: Registra la metadata visual en `registry/index.ts`
 
-Crea el archivo `src/components/nodes/registry/PreguntaNode.tsx`:
-
-```tsx
-// src/components/nodes/registry/PreguntaNode.tsx
-import type { NodeMeta } from '@/types/node.types';
-
-// Color de acento para este tipo (sólido, nunca gradiente)
-export const PREGUNTA_COLOR = '#4CAF50'; // verde esmeralda
-
-interface Props {
-  node: NodeMeta;
-  isSelected: boolean;
-  onDoubleClick: () => void;
-}
-
-export function PreguntaNode({ node, isSelected, onDoubleClick }: Props) {
-  return (
-    <div
-      onDoubleClick={onDoubleClick}
-      style={{
-        // Glassmorphism base
-        background: 'rgba(255, 255, 255, 0.04)',
-        backdropFilter: 'blur(12px)',
-        WebkitBackdropFilter: 'blur(12px)',
-        // Borde neón en el color de la categoría
-        border: `1px solid ${isSelected
-          ? PREGUNTA_COLOR
-          : 'rgba(76, 175, 80, 0.3)'}`,
-        boxShadow: isSelected
-          ? `0 0 16px ${PREGUNTA_COLOR}55`
-          : `0 0 6px ${PREGUNTA_COLOR}22`,
-        borderRadius: '12px',
-        padding: '16px',
-        minWidth: '180px',
-        cursor: 'grab',
-      }}
-    >
-      {/* Indicador de tipo */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '8px' }}>
-        <span style={{ fontSize: '10px', color: PREGUNTA_COLOR, fontFamily: 'JetBrains Mono' }}>
-          ❓ PREGUNTA
-        </span>
-      </div>
-
-      {/* Contenido */}
-      <p style={{ color: '#F0F4FF', fontSize: '14px', fontFamily: 'Inter', margin: 0 }}>
-        {node.content || 'Escribe tu pregunta...'}
-      </p>
-
-      {/* Tags */}
-      {node.tags.length > 0 && (
-        <div style={{ display: 'flex', gap: '4px', marginTop: '10px', flexWrap: 'wrap' }}>
-          {node.tags.map(tag => (
-            <span
-              key={tag}
-              style={{
-                fontSize: '11px',
-                color: PREGUNTA_COLOR,
-                fontFamily: 'JetBrains Mono',
-                background: `${PREGUNTA_COLOR}18`,
-                padding: '2px 6px',
-                borderRadius: '4px',
-              }}
-            >
-              #{tag}
-            </span>
-          ))}
-        </div>
-      )}
-    </div>
-  );
-}
-
-// Configuración física de este tipo de nodo
-// El motor usará estos valores al crear el cuerpo en Matter.js
-export const PREGUNTA_PHYSICS = {
-  mass: 1.2,         // más pesado que una idea (1.0)
-  frictionAir: 0.015, // frena un poco más rápido
-  restitution: 0.4,   // rebota 40% de su energía al chocar
-  width: 200,
-  height: 80,
-};
-```
-
----
-
-#### Paso 3: Registra el nodo en el índice central
+`CATEGORY_INFO` define etiqueta, color de acento (sólido, nunca gradiente), color de glow e icono por categoría:
 
 ```typescript
 // src/components/nodes/registry/index.ts
 
-import { IdeaNode, IDEA_PHYSICS } from './IdeaNode';
-import { TaskNode, TASK_PHYSICS } from './TaskNode';
-import { ReferenceNode, REFERENCE_PHYSICS } from './ReferenceNode';
-import { AlertNode, ALERT_PHYSICS } from './AlertNode';
-import { PreguntaNode, PREGUNTA_PHYSICS } from './PreguntaNode'; // 👈 nuevo
-
-import type { NodeCategory } from '@/types/node.types';
-
-// Registro central: categoría → componente + física
-export const NODE_REGISTRY: Record<NodeCategory, {
-  component: React.ComponentType<any>;
-  physics: { mass: number; frictionAir: number; restitution: number; width: number; height: number };
+export const CATEGORY_INFO: Record<NodeCategory, {
   label: string;
   color: string;
+  glowColor: string;
+  icon: string;
 }> = {
-  idea:        { component: IdeaNode,      physics: IDEA_PHYSICS,      label: 'Idea',        color: '#00E5FF' },
-  tarea:       { component: TaskNode,      physics: TASK_PHYSICS,      label: 'Tarea',       color: '#FFB300' },
-  referencia:  { component: ReferenceNode, physics: REFERENCE_PHYSICS, label: 'Referencia',  color: '#CE93D8' },
-  alerta:      { component: AlertNode,     physics: ALERT_PHYSICS,     label: 'Alerta',      color: '#FF5252' },
-  pregunta:    { component: PreguntaNode,  physics: PREGUNTA_PHYSICS,  label: 'Pregunta',    color: '#4CAF50' }, // 👈
+  // ...categorías existentes...
+  pregunta: {
+    label: 'Pregunta',
+    color: '#4CAF50', // verde esmeralda
+    glowColor: 'rgba(76, 175, 80, 0.4)',
+    icon: '❓',
+  },
 };
 ```
 
-**Listo.** El motor de física leerá automáticamente `PREGUNTA_PHYSICS` al crear el cuerpo. El componente visual se renderizará cuando el store tenga un nodo con `category: 'pregunta'`. No se modificó ningún otro archivo.
+---
+
+#### Paso 3: Define la física de la categoría en `physics/bodies.ts`
+
+El motor lee `CATEGORY_PHYSICS` al crear cada cuerpo en Matter.js:
+
+```typescript
+// src/physics/bodies.ts
+
+export const CATEGORY_PHYSICS: Record<NodeCategory, {
+  mass: number;
+  frictionAir: number;
+  restitution: number;
+  width: number;
+  height: number;
+}> = {
+  // ...categorías existentes...
+  pregunta: {
+    mass: 1.2,          // más pesado que una idea (1.0)
+    frictionAir: 0.015, // frena un poco más rápido
+    restitution: 0.4,   // rebota 40% de su energía al chocar
+    width: 260,
+    height: 120,
+  },
+};
+```
+
+**Listo.** `NodeCard` tomará automáticamente el color e icono de `CATEGORY_INFO`, y el motor usará `CATEGORY_PHYSICS['pregunta']` al crear el cuerpo. No se modificó ningún otro archivo.
 
 ---
 
@@ -187,24 +121,24 @@ export function createPhysicsEngine(config: PhysicsConfig) {
 | `gravity.x` | `number` | `-0.5 – 0.5` | Gravedad lateral (efecto "viento") |
 | `engine.timing.timeScale` | `number` | `0.1 – 2.0` | Velocidad de la simulación (cámara lenta / rápida) |
 
-#### Variables por Tipo de Nodo (en cada archivo del registry)
+#### Variables por Categoría de Nodo (`CATEGORY_PHYSICS`)
 
 ```typescript
-// En cualquier archivo NodeXxx.tsx, el objeto PHYSICS
+// src/physics/bodies.ts — entrada dentro de CATEGORY_PHYSICS
 
-export const MI_NODO_PHYSICS = {
+miCategoria: {
   mass: 1.0,
   // Cuánto rebota al chocar con otro nodo (0 = plastilina, 1 = pelota de acero)
   restitution: 0.3,
   // Fricción con el aire: 0.001 = casi sin resistencia, 0.1 = mucha resistencia
   frictionAir: 0.01,
-  // Fricción con superficies (si hay gravedad activada)
-  friction: 0.05,
   // Dimensiones del cuerpo físico (no necesariamente igual al tamaño visual)
-  width: 200,
-  height: 80,
-};
+  width: 260,
+  height: 120,
+},
 ```
+
+> `friction` (fricción con superficies) y el `chamfer` de esquinas redondeadas se aplican de forma global en `createNodeBody`.
 
 #### Variables de Magnetismo
 
@@ -212,19 +146,21 @@ export const MI_NODO_PHYSICS = {
 // src/physics/forces.ts
 
 // Distancia máxima a la que dos nodos con tags compartidos se atraen
-export const ATTRACTION_DISTANCE = 400;   // píxeles
+const ATTRACTION_DISTANCE = 450;   // píxeles
 
 // Distancia mínima antes de que se repelen (para no colisionar)
-export const REPULSION_DISTANCE  = 120;   // píxeles
+const REPULSION_DISTANCE  = 150;   // píxeles
 
-// Intensidad de la atracción (valores muy altos crean comportamiento inestable)
-export const ATTRACTION_STRENGTH = 0.00008;
+// Intensidad base de la atracción (se multiplica por magnetStrength del HUD)
+const ATTRACTION_BASE_STRENGTH = 0.00008;
 
-// Intensidad de la repulsión (debe ser mayor que la atracción para evitar colapso)
-export const REPULSION_STRENGTH  = 0.0003;
+// Intensidad base de la repulsión (debe superar a la atracción para evitar colapso)
+const REPULSION_BASE_STRENGTH  = 0.0004;
 ```
 
-> **Consejo:** Si los nodos se "fusionan" en un punto (colapso), aumenta `REPULSION_STRENGTH`. Si nunca se acercan, aumenta `ATTRACTION_STRENGTH` o `ATTRACTION_DISTANCE`.
+> **Consejo:** Si los nodos se "fusionan" en un punto (colapso), aumenta `REPULSION_BASE_STRENGTH`. Si nunca se acercan, aumenta `ATTRACTION_BASE_STRENGTH` o `ATTRACTION_DISTANCE`.
+>
+> **Rendimiento:** las fuerzas se calculan con una rejilla espacial (spatial hash grid) de tamaño de celda `ATTRACTION_DISTANCE`, evitando el coste O(N²).
 
 #### Tablas de Referencia Rápida
 

@@ -112,6 +112,21 @@
 
 **Criterio de aceptación:** Glassmorphism correcto en todas las categorías, HUD funcional, animación de desintegración completa, export/import JSON funcional.
 
+> **Nota de implementación:** el registro de nodos se consolidó en `src/components/nodes/registry/index.ts` como un objeto `CATEGORY_INFO` estático (metadata + color por categoría), absorbiendo el rol de `colorMap.ts`. Se añadió una categoría `central` (pozo gravitatorio). No existen componentes por-tipo separados (`IdeaNode`, etc.); `NodeCard` renderiza según categoría.
+
+---
+
+### Fase 5: Endurecimiento, Rendimiento y Pruebas ✅
+**Trabajo realizado:**
+
+- **Robustez:** `utils/logger.ts` (logs solo en dev), `utils/sanitize.ts` (saneo/límites de texto), y `serializer.ts` con `SCHEMA_VERSION` + `validateSnapshot` para cargas seguras desde localStorage/JSON.
+- **Rendimiento:** `forces.ts` migrado a **spatial hash grid** (O(N²) → ~O(N)); `usePhysicsSync` con `Map` por frame y refs SVG cacheadas.
+- **RNF:** accesibilidad por teclado en `NodeCard` + atajos globales; fuentes vía `next/font` (auto-hospedadas).
+- **Arquitectura:** bus de comandos tipado (`commandBus.ts`) reemplaza `window` CustomEvents; `useCanvasCommands` extrae listeners de `PhysicsCanvas`; tipo `NodeBody`; store dividido en slices reales.
+- **Pruebas:** Vitest (jsdom) con 33 tests sobre `sanitize`, `serializer`, store y `forces`. Scripts `test` / `test:watch`.
+
+**Criterio de aceptación:** `npm run lint`, `npx tsc --noEmit`, `npm run build` y `npm run test` en verde.
+
 ---
 
 ## Plan de Verificación

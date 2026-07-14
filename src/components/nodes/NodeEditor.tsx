@@ -2,6 +2,7 @@
 
 import React, { useState } from 'react';
 import { NodeMeta } from '../../types/node.types';
+import { sanitizeTitle, sanitizeText, sanitizeTag } from '../../utils/sanitize';
 
 interface NodeEditorProps {
   node: NodeMeta;
@@ -18,13 +19,17 @@ export function NodeEditor({ node, onSave, onCancel, color }: NodeEditorProps) {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     
-    // Parse tags: remove #, split by space, filter empty
-    const tags = tagsInput
-      .split(/\s+/)
-      .map(tag => tag.replace('#', '').trim())
-      .filter(tag => tag.length > 0);
+    // Parse tags: remove #, split by space, sanitize, filter empty, dedupe
+    const tags = Array.from(
+      new Set(
+        tagsInput
+          .split(/\s+/)
+          .map((tag) => sanitizeTag(tag))
+          .filter((tag) => tag.length > 0)
+      )
+    );
 
-    onSave(title.trim(), content.trim(), tags);
+    onSave(sanitizeTitle(title.trim()), sanitizeText(content.trim()), tags);
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
@@ -52,6 +57,7 @@ export function NodeEditor({ node, onSave, onCancel, color }: NodeEditorProps) {
         value={title}
         onChange={(e) => setTitle(e.target.value)}
         placeholder="Título de la nota..."
+        maxLength={120}
         autoFocus
         className="w-full bg-white/5 border border-white/10 rounded px-2 py-1 text-sm font-semibold font-sans text-white focus:outline-none focus:border-white/20"
         style={{ borderColor: `${color}33` }}
@@ -62,6 +68,7 @@ export function NodeEditor({ node, onSave, onCancel, color }: NodeEditorProps) {
         value={content}
         onChange={(e) => setContent(e.target.value)}
         placeholder="Escribe tu contenido aquí..."
+        maxLength={2000}
         rows={3}
         className="w-full bg-white/5 border border-white/10 rounded px-2 py-1 text-xs font-sans text-white/90 resize-none focus:outline-none focus:border-white/20"
         style={{ borderColor: `${color}33` }}

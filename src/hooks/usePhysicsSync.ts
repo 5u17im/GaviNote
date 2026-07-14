@@ -1,13 +1,20 @@
 import { useEffect, useRef } from 'react';
 import Matter from 'matter-js';
-import { CATEGORY_PHYSICS } from '../physics/bodies';
+import { CATEGORY_PHYSICS, type NodeBody } from '../physics/bodies';
 import { calcBezierPath } from '../utils/bezier';
+import { logError } from '../utils/logger';
 import type { NodeMeta, Connection } from '../types/node.types';
+
+export interface ConnectionPathRefs {
+  path: SVGPathElement | null;
+  thick: SVGPathElement | null;
+}
 
 interface UsePhysicsSyncProps {
   engineRef: React.MutableRefObject<Matter.Engine | null>;
   bodiesRef: React.MutableRefObject<Map<string, Matter.Body>>;
   domRefs: React.MutableRefObject<Map<string, HTMLElement>>;
+  svgRefs: React.MutableRefObject<Map<string, ConnectionPathRefs>>;
   nodes: NodeMeta[];
   connections: Connection[];
   zoom: number;
@@ -44,6 +51,7 @@ export function usePhysicsSync({
   engineRef, 
   bodiesRef, 
   domRefs, 
+  svgRefs,
   nodes, 
   connections,
   zoom,
@@ -78,16 +86,20 @@ export function usePhysicsSync({
         const currentNodes = nodesRef.current;
         const currentConnections = connectionsRef.current;
 
+        // Build an O(1) lookup map once per frame instead of O(N) Array.find per body/connection
+        const nodeMap = new Map<string, NodeMeta>();
+        for (const node of currentNodes) nodeMap.set(node.id, node);
+
         // 1. Sync Node DOM positions — read live body positions every frame
         for (const [id, body] of bodies.entries()) {
           const domElement = doms.get(id);
           if (!domElement) continue;
-          const nodeMeta = currentNodes.find((n) => n.id === id);
+          const nodeMeta = nodeMap.get(id);
           if (!nodeMeta) continue;
 
           // Self-healing: if body is static but node is not pinned (and not dragging), restore it to dynamic
           const isPinned = nodeMeta.isPinned || false;
-          const isDragging = (body as unknown as { isDragging?: boolean }).isDragging || false;
+          const isDragging = (body as NodeBody).isDragging || false;
           if (body.isStatic && !isPinned && !isDragging) {
             Matter.Body.setStatic(body, false);
           }
@@ -138,11 +150,12 @@ export function usePhysicsSync({
 
         // 2. Sync SVG connection paths — same frame, same body positions
         currentConnections.forEach((conn) => {
-          const pathEl = document.getElementById(`path-${conn.id}`);
-          const thickEl = document.getElementById(`thick-${conn.id}`);
+          const refs = svgRefs.current.get(conn.id);
+          const pathEl = refs?.path ?? null;
+          const thickEl = refs?.thick ?? null;
 
-          const nodeA = currentNodes.find((n) => n.id === conn.sourceId);
-          const nodeB = currentNodes.find((n) => n.id === conn.targetId);
+          const nodeA = nodeMap.get(conn.sourceId);
+          const nodeB = nodeMap.get(conn.targetId);
 
           // Hide connection line if either node is deleting
           if (nodeA?.isDeleting || nodeB?.isDeleting) {
@@ -186,7 +199,7 @@ export function usePhysicsSync({
           }
         });
       } catch (err) {
-        console.error("Error in syncPositions RAF loop:", err);
+        logError("Error in syncPositions RAF loop:", err);
       }
 
       rafId = requestAnimationFrame(syncPositions);
@@ -197,7 +210,7 @@ export function usePhysicsSync({
     return () => {
       if (rafId !== null) cancelAnimationFrame(rafId);
     };
-  }, [engineRef, bodiesRef, domRefs]);
+  }, [engineRef, bodiesRef, domRefs, svgRefs]);
 
 
 }

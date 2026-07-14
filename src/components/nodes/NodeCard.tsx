@@ -5,6 +5,7 @@ import { NodeMeta } from '../../types/node.types';
 import { CATEGORY_INFO } from './registry';
 import { NodeEditor } from './NodeEditor';
 import { calculateOptimalDimensions } from '../../utils/dimensions';
+import { commandBus } from '../../utils/commandBus';
 
 interface NodeCardProps {
   node: NodeMeta;
@@ -31,14 +32,9 @@ export function NodeCard({
 
   // Decoupled edit command listener sent from the hoisted screen-space ContextMenu
   useEffect(() => {
-    const handleEditEvent = () => {
-      setIsEditing(true);
-    };
-
-    window.addEventListener(`edit-node-${node.id}`, handleEditEvent);
-    return () => {
-      window.removeEventListener(`edit-node-${node.id}`, handleEditEvent);
-    };
+    return commandBus.on('editNode', (id) => {
+      if (id === node.id) setIsEditing(true);
+    });
   }, [node.id]);
 
   const handleContextMenu = (e: React.MouseEvent) => {
@@ -50,6 +46,16 @@ export function NodeCard({
   const handleDoubleClick = (e: React.MouseEvent) => {
     e.stopPropagation();
     setIsEditing(true);
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (isEditing) return;
+    // Enter / Space enters edit mode for the focused node (RNF-02 keyboard support)
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      e.stopPropagation();
+      setIsEditing(true);
+    }
   };
 
   const handleSave = (title: string, content: string, tags: string[]) => {
@@ -77,6 +83,10 @@ export function NodeCard({
     <div
       ref={domRef}
       style={cardStyle}
+      tabIndex={isEditing ? -1 : 0}
+      role="button"
+      aria-label={`Nota ${info.label}: ${node.title || 'Sin título'}. Pulsa Enter para editar, Suprimir para eliminar.`}
+      aria-pressed={isSelected}
       onPointerDown={(e) => {
         if (!isEditing) {
           onSelect();
@@ -85,12 +95,16 @@ export function NodeCard({
       }}
       onContextMenu={handleContextMenu}
       onDoubleClick={handleDoubleClick}
+      onKeyDown={handleKeyDown}
+      onFocus={() => {
+        if (!isEditing) onSelect();
+      }}
       onWheel={(e) => {
         if (isEditing) {
           e.stopPropagation();
         }
       }}
-      className="glass-card p-[3px] rounded-md select-none z-10 hover:border-white/20 transition-colors pointer-events-auto flex flex-col"
+      className="glass-card p-[3px] rounded-md select-none z-10 hover:border-white/20 transition-colors pointer-events-auto flex flex-col focus:outline-none focus-visible:ring-2 focus-visible:ring-white/40"
     >
       {isEditing ? (
         <div className="w-full h-full p-3 bg-[#0D0F17]/95 rounded-[3px] border border-white/5 flex flex-col">

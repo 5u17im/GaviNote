@@ -116,23 +116,27 @@
 2. Un menú de categorías aparece: Idea (cian), Tarea (ámbar), Referencia (violeta), Alerta (coral).
 3. Al seleccionar, el borde neón del nodo cambia de color y la masa del cuerpo cambia proporcionalmente.
 
+> **Nota:** Existe además una categoría interna `central` (pozo gravitatorio) usada por el sistema para nodos ancla de mayor masa. No se ofrece en el menú de categorización al usuario; se documenta en `Arquitectura.md` y `Tutorial.md`.
+
 ---
 
 ### CU-09: Zoom y Navegación del Lienzo
 **Actor:** Cualquier usuario  
 **Flujo Principal:**  
 1. El usuario usa la rueda del mouse para hacer zoom in/out del lienzo.
-2. Con clic central + arrastre (o dos dedos en táctil), el usuario hace pan por el lienzo.
-3. El lienzo es conceptualmente infinito.
+2. En táctil, el usuario hace *pinch* con dos dedos para hacer zoom (el zoom se limita entre 0.15x y 3.0x).
+3. Con clic central + arrastre, barra espaciadora + arrastre, o arrastre del fondo, el usuario hace pan por el lienzo.
+4. El lienzo es conceptualmente infinito.
 
 ---
 
 ### CU-10: Exportar el Mapa
 **Actor:** Cualquier usuario  
 **Flujo Principal:**  
-1. Desde el HUD, el usuario elige "Exportar" → opciones: JSON (datos) o PNG (captura visual).
-2. En formato JSON: se serializa el store de Zustand (posiciones, contenido, etiquetas, conexiones).
-3. En formato PNG: se renderiza el canvas completo con `html2canvas`.
+1. Desde el HUD, el usuario elige "Exportar" → descarga un archivo JSON con los datos del mapa.
+2. En formato JSON: se serializa el store de Zustand (posiciones, contenido, etiquetas, conexiones) mediante `utils/serializer.ts`.
+
+> **Nota (v1.1.0):** La exportación a **PNG** queda **fuera de scope** de V1 (ver §6). Para una captura visual, el usuario puede usar la captura de pantalla del sistema operativo. Se evita añadir `html2canvas` porque los `transform` del viewport, el SVG de conexiones y el glassmorphism no se renderizan de forma fiable, y supondría una dependencia adicional.
 
 ---
 
@@ -179,8 +183,8 @@
 > **Como** creativo visual, **quiero** que las notas se atraigan según sus etiquetas **para** que mi mapa se auto-organice visualmente.
 
 **Criterios de Aceptación:**
-- [ ] Dos nodos con la misma etiqueta se atraen con fuerza configurable (default: 0.0001).
-- [ ] La fuerza de atracción nunca colapsa los nodos (hay repulsión de proximidad < 100px).
+- [ ] Dos nodos con la misma etiqueta se atraen con fuerza configurable (base: `0.00008`, rango de atracción hasta 450px; ver `ATTRACTION_BASE_STRENGTH`/`ATTRACTION_DISTANCE` en `src/physics/forces.ts`).
+- [ ] La fuerza de atracción nunca colapsa los nodos (hay repulsión de proximidad < 150px, `REPULSION_DISTANCE`).
 - [ ] La atracción/repulsión no impide el arrastre manual del usuario.
 - [ ] El rendimiento se mantiene a 60 FPS con hasta 100 nodos con etiquetas activas.
 
@@ -190,9 +194,11 @@
 > **Como** desarrollador explorador, **quiero** una API interna clara **para** programar nuevos tipos de nodos sin romper la arquitectura existente.
 
 **Criterios de Aceptación:**
-- [ ] Existe un registro central de tipos de nodos (`NODE_REGISTRY`) con interfaz documentada.
+- [x] Existe un registro central de categorías de nodos (`CATEGORY_INFO` en `src/components/nodes/registry/index.ts`) con metadata y color por categoría.
 - [ ] Un nuevo tipo de nodo se puede agregar en ≤ 3 archivos sin modificar el motor de física.
-- [ ] El tutorial de integración está disponible en el repositorio.
+- [x] El tutorial de integración está disponible en el repositorio.
+
+> **Estado de implementación (v1.1.0):** el registro actual es estático (`CATEGORY_INFO`), no un `NODE_REGISTRY` extensible. Añadir una categoría implica tocar `NodeCategory`, `CATEGORY_INFO` y la lógica de `NodeCard`. Pendiente para una futura versión convertirlo en un registro plug-in real.
 
 ---
 
@@ -200,12 +206,12 @@
 
 | ID | Categoría | Requisito |
 |----|-----------|-----------|
-| RNF-01 | Rendimiento | El motor de física debe correr a mínimo 60 FPS con 200 nodos activos en hardware moderno (GPU integrada). |
+| RNF-01 | Rendimiento | El motor de física debe correr a mínimo 60 FPS con 200 nodos activos en hardware moderno (GPU integrada). El cálculo de fuerzas usa un *spatial hash grid* (cuasi O(N)); existe una prueba de rendimiento en `src/physics/forces.test.ts` que acota el tiempo de un tick de fuerzas con 200 nodos como proxy verificable del presupuesto de frame (16.6ms). |
 | RNF-02 | Accesibilidad | Todos los nodos deben ser navegables por teclado (`Tab`, `Enter`, `Escape`). |
 | RNF-03 | Persistencia | El estado del lienzo se persiste en `localStorage` con debounce de 500ms. |
 | RNF-04 | Compatibilidad | Chrome 110+, Firefox 115+, Safari 16+, Edge 110+. |
-| RNF-05 | Responsive | El lienzo funciona en pantallas desde 768px de ancho (tablet landscape). |
-| RNF-06 | Seguridad | Contenido de notas sanitizado con DOMPurify antes de renderizar. |
+| RNF-05 | Responsive / Táctil | El lienzo funciona en pantallas desde 768px de ancho (tablet landscape). Soporta gestos táctiles: arrastre de un dedo para pan y *pinch* de dos dedos para zoom. |
+| RNF-06 | Seguridad | Contenido de notas saneado a la entrada (`utils/sanitize.ts`: elimina caracteres de control y limita longitud); el renderizado se apoya en el escape nativo de React. No se usa DOMPurify porque no se renderiza HTML crudo. |
 | RNF-07 | Escalabilidad | Arquitectura preparada para soporte multi-usuario en V2 (WebSockets-ready). |
 
 ---
@@ -221,7 +227,8 @@
 - Categorización de nodos por color
 - HUD de control de física
 - Animación de desintegración
-- Exportar/Importar en JSON y PNG
+- Exportar/Importar en JSON
+- Zoom táctil por *pinch* (dos dedos)
 - Persistencia en localStorage
 
 ### ❌ Out of Scope (V2)
@@ -230,6 +237,7 @@
 - Backend / base de datos en la nube
 - Aplicación móvil nativa
 - Modo de presentación / slides
+- Exportación a PNG / imagen (se recomienda captura del SO)
 
 ---
 

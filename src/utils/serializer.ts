@@ -1,32 +1,125 @@
 import { NodeMeta, Connection, NodeCategory, ConnectionType } from '../types/node.types';
+import { logError, logInfo } from './logger';
+import { sanitizeText } from './sanitize';
 
+export const SCHEMA_VERSION = 1;
+
+const VALID_CATEGORIES: NodeCategory[] = ['central', 'idea', 'tarea', 'referencia', 'alerta'];
+const VALID_CONNECTION_TYPES: ConnectionType[] = ['neutra', 'apoyo', 'conflicto'];
+
+export interface GraviSnapshot {
+  nodes: NodeMeta[];
+  connections: Connection[];
+}
+
+function randomId(prefix: string): string {
+  return `${prefix}-${Math.random().toString(36).slice(2, 11)}`;
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null;
+}
+
+function sanitizeNode(raw: unknown): NodeMeta | null {
+  if (!isRecord(raw)) return null;
+
+  const category = (typeof raw.category === 'string' && VALID_CATEGORIES.includes(raw.category as NodeCategory)
+    ? raw.category
+    : 'idea') as NodeCategory;
+
+  return {
+    id: typeof raw.id === 'string' && raw.id.length > 0 ? raw.id : randomId('node'),
+    title: sanitizeText(typeof raw.title === 'string' ? raw.title : ''),
+    content: sanitizeText(typeof raw.content === 'string' ? raw.content : ''),
+    tags: Array.isArray(raw.tags)
+      ? raw.tags.filter((t): t is string => typeof t === 'string').map((t) => sanitizeText(t, 40))
+      : [],
+    category,
+    initialX: typeof raw.initialX === 'number' && Number.isFinite(raw.initialX) ? raw.initialX : 0,
+    initialY: typeof raw.initialY === 'number' && Number.isFinite(raw.initialY) ? raw.initialY : 0,
+    width: typeof raw.width === 'number' && Number.isFinite(raw.width) ? raw.width : 260,
+    height: typeof raw.height === 'number' && Number.isFinite(raw.height) ? raw.height : 120,
+    createdAt: typeof raw.createdAt === 'number' ? raw.createdAt : Date.now(),
+    isPinned: typeof raw.isPinned === 'boolean' ? raw.isPinned : undefined,
+  };
+}
+
+function sanitizeConnection(raw: unknown, validNodeIds: Set<string>): Connection | null {
+  if (!isRecord(raw)) return null;
+  const sourceId = typeof raw.sourceId === 'string' ? raw.sourceId : '';
+  const targetId = typeof raw.targetId === 'string' ? raw.targetId : '';
+
+  // Drop connections that reference missing nodes to keep the graph consistent
+  if (!validNodeIds.has(sourceId) || !validNodeIds.has(targetId) || sourceId === targetId) {
+    return null;
+  }
+
+  const type = (typeof raw.type === 'string' && VALID_CONNECTION_TYPES.includes(raw.type as ConnectionType)
+    ? raw.type
+    : 'neutra') as ConnectionType;
+
+  return {
+    id: typeof raw.id === 'string' && raw.id.length > 0 ? raw.id : randomId('conn'),
+    sourceId,
+    targetId,
+    type,
+  };
+}
+
+/**
+ * Validates and sanitizes an arbitrary parsed object into a safe GraviSnapshot.
+ * Returns null if the payload cannot be interpreted as a valid snapshot.
+ * Forward-compatible: unknown future versions are still parsed best-effort.
+ */
+export function validateSnapshot(raw: unknown): GraviSnapshot | null {
+  if (!isRecord(raw) || !Array.isArray(raw.nodes)) {
+    return null;
+  }
+
+  const nodes = raw.nodes
+    .map(sanitizeNode)
+    .filter((n): n is NodeMeta => n !== null);
+
+  const validNodeIds = new Set(nodes.map((n) => n.id));
+
+  const connections = Array.isArray(raw.connections)
+    ? raw.connections
+        .map((c) => sanitizeConnection(c, validNodeIds))
+        .filter((c): c is Connection => c !== null)
+    : [];
+
+  return { nodes, connections };
+}
+
+export function serializeSnapshot(nodes: NodeMeta[], connections: Connection[]) {
+  return {
+    version: SCHEMA_VERSION,
+    app: 'GraviNote',
+    exportedAt: Date.now(),
+    nodes,
+    connections,
+  };
+}
 
 export function exportStateToJSON(nodes: NodeMeta[], connections: Connection[]) {
   try {
-    const data = {
-      nodes,
-      connections,
-      exportedAt: Date.now(),
-      app: 'GraviNote',
-    };
-
-    const jsonString = JSON.stringify(data, null, 2);
+    const jsonString = JSON.stringify(serializeSnapshot(nodes, connections), null, 2);
     const blob = new Blob([jsonString], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
-    
+
     const link = document.createElement('a');
     link.href = url;
     link.download = `gravinote-respaldo-${new Date().toISOString().split('T')[0]}.json`;
     document.body.appendChild(link);
     link.click();
-    
+
     // Cleanup
     document.body.removeChild(link);
     URL.revokeObjectURL(url);
-    
-    console.log("Canvas exported successfully.");
+
+    logInfo('Canvas exported successfully.');
   } catch (error) {
-    console.error("Failed to export canvas state:", error);
+    logError('Failed to export canvas state:', error);
   }
 }
 
@@ -35,54 +128,24 @@ export function importStateFromJSON(
   onLoad: (nodes: NodeMeta[], connections: Connection[]) => void
 ) {
   const reader = new FileReader();
-  
+
   reader.onload = (e) => {
     try {
       const result = e.target?.result;
       if (typeof result !== 'string') return;
 
-      const data = JSON.parse(result);
-      
-      // Basic validation
-      if (!data || !Array.isArray(data.nodes)) {
-        alert("El archivo JSON no es un respaldo válido de GraviNote (Falta lista de nodos).");
+      const snapshot = validateSnapshot(JSON.parse(result));
+
+      if (!snapshot) {
+        alert('El archivo JSON no es un respaldo válido de GraviNote (Falta lista de nodos).');
         return;
       }
 
-      // Format loaded nodes with fresh createdAt timestamps to prevent issues
-      const loadedNodes: NodeMeta[] = data.nodes.map((node: unknown) => {
-        const n = node as Record<string, unknown>;
-        return {
-          id: typeof n.id === 'string' ? n.id : `node-${Math.random().toString(36).substr(2, 9)}`,
-          title: typeof n.title === 'string' ? n.title : '',
-          content: typeof n.content === 'string' ? n.content : '',
-          tags: Array.isArray(n.tags) ? (n.tags as string[]) : [],
-          category: (typeof n.category === 'string' ? n.category : 'idea') as NodeCategory,
-          initialX: typeof n.initialX === 'number' ? n.initialX : 0,
-          initialY: typeof n.initialY === 'number' ? n.initialY : 0,
-          width: typeof n.width === 'number' ? n.width : 260,
-          height: typeof n.height === 'number' ? n.height : 120,
-          createdAt: typeof n.createdAt === 'number' ? n.createdAt : Date.now(),
-        };
-      });
-
-      const loadedConnections: Connection[] = Array.isArray(data.connections)
-        ? data.connections.map((c: unknown) => {
-            const conn = c as Record<string, unknown>;
-            return {
-              id: typeof conn.id === 'string' ? conn.id : `conn-${Math.random().toString(36).substr(2, 9)}`,
-              sourceId: typeof conn.sourceId === 'string' ? conn.sourceId : '',
-              targetId: typeof conn.targetId === 'string' ? conn.targetId : '',
-              type: (typeof conn.type === 'string' ? conn.type : 'neutra') as ConnectionType,
-            };
-          })
-        : [];
-
-      onLoad(loadedNodes, loadedConnections);
-      console.log("Canvas state imported successfully.");
+      onLoad(snapshot.nodes, snapshot.connections);
+      logInfo('Canvas state imported successfully.');
     } catch (error) {
-      console.error("Failed to parse imported JSON:", error);
-      alert("Error al leer el archivo. Asegúrate de que sea un archivo JSON válido.");
+      logError('Failed to parse imported JSON:', error);
+      alert('Error al leer el archivo. Asegúrate de que sea un archivo JSON válido.');
     }
   };
 

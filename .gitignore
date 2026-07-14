@@ -41,3 +41,8 @@ yarn-error.log*
 next-env.d.ts
 CLAUDE.md
 AGENTS.md
+
+# spec-kit (Spec-Driven Development tooling)
+.specify/
+.opencode/
+specs/

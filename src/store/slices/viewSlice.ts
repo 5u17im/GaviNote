@@ -1,15 +1,22 @@
 import { StateCreator } from 'zustand';
 import type { GraviStore } from '../useGraviStore';
 
+export interface CollapsedCluster {
+  // Stable key (lexicographically smallest member id at collapse time).
+  key: string;
+  // Frozen member ids captured when the cluster was collapsed. Keeping them
+  // fixed means deleting a member later doesn't drop or re-shape the star.
+  nodeIds: string[];
+}
+
 export interface ViewSlice {
   // Constellations (Idea 1)
   showConstellations: boolean;
   toggleConstellations: () => void;
-  // Keys of constellations currently collapsed into a single "star".
-  collapsedKeys: string[];
-  toggleCollapse: (key: string) => void;
+  // Collapsed constellations, with a frozen member list per cluster.
+  collapsedClusters: CollapsedCluster[];
+  toggleCollapse: (key: string, nodeIds: string[]) => void;
   expandAll: () => void;
-
   // Presentation / guided tour (Idea 3)
   isPresenting: boolean;
   tourIndex: number;
@@ -26,16 +33,18 @@ export const createViewSlice: StateCreator<GraviStore, [], [], ViewSlice> = (set
     set((state) => ({ showConstellations: !state.showConstellations }));
   },
 
-  collapsedKeys: [],
-  toggleCollapse: (key) => {
-    set((state) => ({
-      collapsedKeys: state.collapsedKeys.includes(key)
-        ? state.collapsedKeys.filter((k) => k !== key)
-        : [...state.collapsedKeys, key],
-    }));
+  collapsedClusters: [],
+  toggleCollapse: (key, nodeIds) => {
+    set((state) => {
+      const existing = state.collapsedClusters.find((c) => c.key === key);
+      if (existing) {
+        return { collapsedClusters: state.collapsedClusters.filter((c) => c.key !== key) };
+      }
+      return { collapsedClusters: [...state.collapsedClusters, { key, nodeIds }] };
+    });
   },
   expandAll: () => {
-    set({ collapsedKeys: [] });
+    set({ collapsedClusters: [] });
   },
 
   isPresenting: false,
@@ -44,7 +53,7 @@ export const createViewSlice: StateCreator<GraviStore, [], [], ViewSlice> = (set
   startPresentation: () => {
     if (get().nodes.length === 0) return;
     // Expand everything so the tour can frame every node.
-    set({ isPresenting: true, tourIndex: 0, collapsedKeys: [] });
+    set({ isPresenting: true, tourIndex: 0, collapsedClusters: [] });
   },
 
   stopPresentation: () => {

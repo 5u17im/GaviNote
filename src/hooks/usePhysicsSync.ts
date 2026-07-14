@@ -23,8 +23,11 @@ interface UsePhysicsSyncProps {
   panY: number;
   searchQuery: string;
   constellations: Constellation[];
+  // Combined constellation list (expanded + frozen-collapsed) shared with the
+  // render layer so halo/star ref ids line up exactly with the RAF sync loop.
+  constellationEntries: { id: number; key: string; nodeIds: string[]; color: string; collapsed: boolean }[];
   haloRefs: React.MutableRefObject<Map<number, SVGEllipseElement>>;
-  collapsedKeys: string[];
+  collapsedClusters: { key: string; nodeIds: string[] }[];
   starRefs: React.MutableRefObject<Map<number, SVGGElement>>;
 }
 
@@ -71,8 +74,9 @@ export function usePhysicsSync({
   panY,
   searchQuery,
   constellations,
+  constellationEntries,
   haloRefs,
-  collapsedKeys,
+  collapsedClusters,
   starRefs
 }: UsePhysicsSyncProps) {
   // Keep stable refs so the RAF loop always has fresh data without restarting
@@ -84,8 +88,10 @@ export function usePhysicsSync({
   // null = no active search; otherwise the set of node ids matching the query.
   const matchIdsRef = useRef<Set<string> | null>(null);
   const constellationsRef = useRef<Constellation[]>(constellations);
-  const collapsedKeysRef = useRef<Set<string>>(new Set(collapsedKeys));
-  const nodeToCollapsedKeyRef = useRef<Map<string, string>>(new Map());
+  const constellationEntriesRef = useRef(constellationEntries);
+  const collapsedClustersRef = useRef<{ key: string; nodeIds: string[] }[]>(collapsedClusters);
+  // Set of node ids that belong to a currently collapsed cluster (frozen list).
+  const collapsedNodeSetRef = useRef<Set<string>>(new Set());
 
   useEffect(() => {
     nodesRef.current = nodes;
@@ -94,16 +100,17 @@ export function usePhysicsSync({
     panXRef.current = panX;
     panYRef.current = panY;
     constellationsRef.current = constellations;
-    collapsedKeysRef.current = new Set(collapsedKeys);
+    constellationEntriesRef.current = constellationEntries;
+    collapsedClustersRef.current = collapsedClusters;
 
-    // Map nodeId -> constellation key (only for currently collapsed clusters).
-    const nodeToCollapsedKey = new Map<string, string>();
-    for (const c of constellations) {
-      if (collapsedKeysRef.current.has(c.key)) {
-        for (const nid of c.nodeIds) nodeToCollapsedKey.set(nid, c.key);
-      }
+    // Flat set of node ids belonging to any currently collapsed cluster. Membership
+    // is frozen at collapse time, so deleting a member doesn't drop the cluster or
+    // make its halo orbit the vanishing body.
+    const collapsedNodeSet = new Set<string>();
+    for (const c of collapsedClusters) {
+      for (const nid of c.nodeIds) collapsedNodeSet.add(nid);
     }
-    nodeToCollapsedKeyRef.current = nodeToCollapsedKey;
+    collapsedNodeSetRef.current = collapsedNodeSet;
 
     const q = searchQuery.trim().toLowerCase();
     if (!q) {
@@ -116,7 +123,7 @@ export function usePhysicsSync({
       }
       matchIdsRef.current = set;
     }
-  }, [nodes, connections, zoom, panX, panY, searchQuery, constellations, collapsedKeys]);
+  }, [nodes, connections, zoom, panX, panY, searchQuery, constellations, constellationEntries, collapsedClusters]);
 
   useEffect(() => {
     const engine = engineRef.current;
@@ -139,16 +146,22 @@ export function usePhysicsSync({
         // collapsed ones, position the "star" at the centroid. This runs first so
         // the node/connection passes below can hide members and re-route lines to
         // the star. The physics bodies are never touched — this is purely visual.
-        const collapsedKeys = collapsedKeysRef.current;
         const collapsedNodeIds = new Set<string>();
         // Shared centroid object per collapsed constellation — identity is reused
         // so a connection can detect "both endpoints in the same star".
         const centroidByNode = new Map<string, { x: number; y: number }>();
 
-        for (const c of constellationsRef.current) {
+        // A collapsed cluster with a deleted member may no longer exist in the
+        // recomputed `constellations`, so we iterate the combined list built in
+        // PhysicsCanvas (expanded + frozen-collapsed). Each entry carries a stable
+        // numeric id (used as the halo/star ref key) and its (possibly frozen)
+        // member list. Includes nodes mid-deletion are excluded by computeConstellations,
+        // so a cluster's halo never follows a body flying into the vortex.
+        const entries = constellationEntriesRef.current;
+        for (const c of entries) {
           const ell = haloRefs.current.get(c.id);
           const star = starRefs.current.get(c.id);
-          const collapsed = collapsedKeys.has(c.key);
+          const collapsed = c.collapsed;
 
           let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
           let hasMember = false;
@@ -222,7 +235,7 @@ export function usePhysicsSync({
           // Skip members of a collapsed constellation — they are frozen on purpose until un-collapsed.
           const isPinned = nodeMeta.isPinned || false;
           const isDragging = (body as NodeBody).isDragging || false;
-          const inCollapsed = nodeToCollapsedKeyRef.current.has(id);
+          const inCollapsed = collapsedNodeSetRef.current.has(id);
           if (body.isStatic && !isPinned && !isDragging && !inCollapsed) {
             Matter.Body.setStatic(body, false);
           }

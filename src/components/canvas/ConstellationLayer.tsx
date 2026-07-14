@@ -1,13 +1,20 @@
 'use client';
 
 import React from 'react';
-import type { Constellation } from '../../utils/constellations';
+
+export interface ConstellationEntry {
+  id: number;
+  key: string;
+  nodeIds: string[];
+  color: string;
+  collapsed: boolean;
+}
 
 interface ConstellationLayerProps {
-  constellations: Constellation[];
+  entries: ConstellationEntry[];
   haloRefs: React.MutableRefObject<Map<number, SVGEllipseElement>>;
   starRefs: React.MutableRefObject<Map<number, SVGGElement>>;
-  collapsedKeys: string[];
+  collapsedClusters: { key: string; nodeIds: string[] }[];
   onStarPointerDown: (key: string, e: React.PointerEvent) => void;
 }
 
@@ -19,16 +26,18 @@ interface ConstellationLayerProps {
  *
  * All geometry (halo ellipse + control position) is updated every frame by the
  * RAF loop in usePhysicsSync. Collapsing is purely visual — the physics bodies
- * keep simulating underneath.
+ * keep simulating underneath. Entries combine the live constellations with any
+ * collapsed clusters (whose membership is frozen, so deleting a member doesn't
+ * make the cluster vanish).
  */
 export function ConstellationLayer({
-  constellations,
+  entries,
   haloRefs,
   starRefs,
-  collapsedKeys,
+  collapsedClusters,
   onStarPointerDown,
 }: ConstellationLayerProps) {
-  const collapsed = new Set(collapsedKeys);
+  const collapsedKeys = new Set(collapsedClusters.map((c) => c.key));
 
   const registerHalo = (id: number) => (el: SVGEllipseElement | null) => {
     if (el) haloRefs.current.set(id, el);
@@ -53,8 +62,8 @@ export function ConstellationLayer({
         </filter>
       </defs>
 
-      {constellations.map((c) => {
-        const isCollapsed = collapsed.has(c.key);
+      {entries.map((c) => {
+        const isCollapsed = collapsedKeys.has(c.key);
         const count = c.nodeIds.length;
         return (
           <g key={c.id}>

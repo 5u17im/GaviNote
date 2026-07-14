@@ -30,8 +30,12 @@ export const CONSTELLATION_COLORS = [
  */
 export function computeConstellations(nodes: NodeMeta[], connections: Connection[]): Constellation[] {
   const parent = new Map<string, string>();
-  const nodeIds = new Set(nodes.map((n) => n.id));
-  for (const n of nodes) parent.set(n.id, n.id);
+  // Nodes mid-deletion (being sucked into the vortex) are excluded from the
+  // graph so a constellation's halo/star never follows a body that is flying
+  // away — which previously made the halo orbit the whole screen.
+  const liveNodes = nodes.filter((n) => !n.isDeleting);
+  const nodeIds = new Set(liveNodes.map((n) => n.id));
+  for (const n of liveNodes) parent.set(n.id, n.id);
 
   const find = (x: string): string => {
     let root = x;

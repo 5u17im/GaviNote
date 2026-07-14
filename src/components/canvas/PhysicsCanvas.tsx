@@ -43,7 +43,7 @@ export function PhysicsCanvas() {
     selectedId,
     searchQuery,
     showConstellations,
-    collapsedKeys,
+    collapsedClusters,
     toggleCollapse,
     physicsConfig,
     addNode,
@@ -95,6 +95,28 @@ export function PhysicsCanvas() {
   // Tour order excludes nodes mid-deletion so the guided presentation never
   // frames a note that is being sucked into the vortex.
   const tourNodes = useMemo(() => nodes.filter((n) => !n.isDeleting), [nodes]);
+
+  // Combined per-frame list of constellation entries for the render + RAF sync.
+  // A collapsed cluster whose membership shrank below 2 (a member was deleted)
+  // is no longer in `constellations`, so we append it from `collapsedClusters`
+  // with a stable id — this keeps its halo/star alive instead of disappearing.
+  const constellationEntries = useMemo(() => {
+    const constById = new Map(constellations.map((c) => [c.key, c]));
+    const entries = constellations.map((c) => ({
+      id: c.id,
+      key: c.key,
+      nodeIds: c.nodeIds,
+      color: c.color,
+      collapsed: collapsedClusters.some((cc) => cc.key === c.key),
+    }));
+    const base = constellations.length;
+    collapsedClusters.forEach((c, i) => {
+      if (!constById.has(c.key)) {
+        entries.push({ id: base + i, key: c.key, nodeIds: c.nodeIds, color: '#00E5FF', collapsed: true });
+      }
+    });
+    return entries;
+  }, [constellations, collapsedClusters]);
 
   // Hook for pointer drag handler — move/up events are now registered on window
   // directly inside the hook to prevent the "wrong card moves" bug
@@ -343,8 +365,9 @@ export function PhysicsCanvas() {
     panY,
     searchQuery,
     constellations,
+    constellationEntries,
     haloRefs,
-    collapsedKeys,
+    collapsedClusters,
     starRefs,
   });
 
@@ -357,18 +380,16 @@ export function PhysicsCanvas() {
     zoom,
     panX,
     panY,
-    constellations,
-    collapsedKeys,
+    collapsedClusters,
     onToggleCollapse: toggleCollapse,
   });
 
   // Freeze the members of a collapsed constellation so they hold their relative
   // formation. Expanding restores them (the RAF self-heal un-freezes bodies that
-  // are no longer collapsed and not individually pinned).
+  // are no longer collapsed and not individually pinned). Membership is frozen at
+  // collapse time, so deleting a member later doesn't drop the cluster.
   useEffect(() => {
-    const collapsedSet = new Set(collapsedKeys);
-    for (const c of constellations) {
-      if (!collapsedSet.has(c.key)) continue;
+    for (const c of collapsedClusters) {
       for (const id of c.nodeIds) {
         const body = bodiesRef.current.get(id);
         if (body && !body.isStatic) {
@@ -376,7 +397,7 @@ export function PhysicsCanvas() {
         }
       }
     }
-  }, [collapsedKeys, constellations, bodiesRef]);
+  }, [collapsedClusters, bodiesRef]);
 
   // Hook for magnetic attraction/repulsión between nodes
   useMagneticForces({
@@ -696,10 +717,10 @@ export function PhysicsCanvas() {
       >
         {/* Constellation halos (behind everything) */}
         <ConstellationLayer
-          constellations={constellations}
+          entries={constellationEntries}
           haloRefs={haloRefs}
           starRefs={starRefs}
-          collapsedKeys={collapsedKeys}
+          collapsedClusters={collapsedClusters}
           onStarPointerDown={onStarPointerDown}
         />
 

@@ -1,16 +1,14 @@
 import { useEffect, useRef } from 'react';
 import Matter from 'matter-js';
 import { useGraviStore } from '../store/useGraviStore';
-import type { Constellation } from '../utils/constellations';
 
 interface UseStarDragProps {
   bodiesRef: React.MutableRefObject<Map<string, Matter.Body>>;
   zoom: number;
   panX: number;
   panY: number;
-  constellations: Constellation[];
-  collapsedKeys: string[];
-  onToggleCollapse: (key: string) => void;
+  collapsedClusters: { key: string; nodeIds: string[] }[];
+  onToggleCollapse: (key: string, nodeIds: string[]) => void;
 }
 
 const DRAG_THRESHOLD = 4;
@@ -28,8 +26,9 @@ interface StarDragInfo {
 
 /**
  * Lets the user move a collapsed constellation by dragging its "star". Because
- * the members are frozen while collapsed, we translate every member body by the
- * same world-space delta so their relative formation is preserved. A plain tap
+ * the members are frozen while collapsed (with a frozen member list), we translate
+ * every member body by the same world-space delta so their relative formation is
+ * preserved — even if some members were deleted after collapsing. A plain tap
  * (below the drag threshold) collapses/expands the constellation instead.
  *
  * The mutation of member bodies here is intentionally the *only* write path for
@@ -40,35 +39,32 @@ export function useStarDrag({
   zoom,
   panX,
   panY,
-  constellations,
-  collapsedKeys,
+  collapsedClusters,
   onToggleCollapse,
 }: UseStarDragProps) {
   const zoomRef = useRef(zoom);
   const panXRef = useRef(panX);
   const panYRef = useRef(panY);
-  const constellationsRef = useRef(constellations);
-  const collapsedKeysRef = useRef(collapsedKeys);
+  const collapsedClustersRef = useRef(collapsedClusters);
 
   useEffect(() => {
     zoomRef.current = zoom;
     panXRef.current = panX;
     panYRef.current = panY;
-    constellationsRef.current = constellations;
-    collapsedKeysRef.current = collapsedKeys;
-  }, [zoom, panX, panY, constellations, collapsedKeys]);
+    collapsedClustersRef.current = collapsedClusters;
+  }, [zoom, panX, panY, collapsedClusters]);
 
   const infoRef = useRef<StarDragInfo | null>(null);
 
   const onStarPointerDown = (key: string, e: React.PointerEvent) => {
     if (e.button !== 0) return;
-    const constellation = constellationsRef.current.find((c) => c.key === key);
-    if (!constellation) return;
+    const cluster = collapsedClustersRef.current.find((c) => c.key === key);
+    if (!cluster) return;
 
-    const draggable = collapsedKeysRef.current.includes(key);
+    const draggable = true;
 
     const startPositions = new Map<string, { x: number; y: number }>();
-    for (const id of constellation.nodeIds) {
+    for (const id of cluster.nodeIds) {
       const body = bodiesRef.current.get(id);
       if (body) startPositions.set(id, { x: body.position.x, y: body.position.y });
     }
@@ -126,7 +122,8 @@ export function useStarDrag({
 
       // Plain tap → toggle collapse/expand.
       if (!info.hasCaptured) {
-        onToggleCollapse(info.key);
+        const cluster = collapsedClustersRef.current.find((c) => c.key === info.key);
+        onToggleCollapse(info.key, cluster?.nodeIds ?? []);
         return;
       }
 

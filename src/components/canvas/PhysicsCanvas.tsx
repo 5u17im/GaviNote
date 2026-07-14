@@ -344,7 +344,7 @@ export function PhysicsCanvas() {
     if (!engine) return;
 
     const handleTick = () => {
-      const vx = window.innerWidth - 56;
+      const vx = window.innerWidth - 72;
       const vy = window.innerHeight - 56;
       const vortexWorld = screenToWorld(vx, vy);
 
@@ -683,7 +683,7 @@ export function PhysicsCanvas() {
 
       {/* Black Hole (Gravity Trash Vortex) UI */}
       <div 
-        className="absolute bottom-6 right-6 z-30 w-16 h-16 rounded-full border border-[#00E5FF]/20 flex items-center justify-center pointer-events-none select-none"
+        className="absolute bottom-6 right-10 z-30 w-16 h-16 rounded-full border border-[#00E5FF]/20 flex items-center justify-center pointer-events-none select-none"
         style={{
           background: 'radial-gradient(circle, rgba(0,0,0,0.95) 0%, rgba(11,15,25,0.7) 70%, rgba(0,229,255,0.05) 100%)',
           boxShadow: '0 0 25px rgba(0, 229, 255, 0.15), inset 0 0 15px rgba(0, 229, 255, 0.2)',

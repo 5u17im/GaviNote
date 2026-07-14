@@ -109,7 +109,7 @@ export function HUDPanel() {
   return (
     <>
       {/* 1. Quick Floating Actions (Top Right) */}
-      <div className="absolute top-6 right-6 z-40 flex items-center gap-2 pointer-events-auto">
+      <div className="absolute top-10 right-6 z-40 flex items-center gap-2 pointer-events-auto">
         {/* Quick Add Node */}
         <button
           onClick={handleQuickAdd}
@@ -164,7 +164,7 @@ export function HUDPanel() {
           id="hud-settings-panel"
           role="region"
           aria-label="Telemetría física y guardado"
-          className="absolute top-24 right-6 z-40 w-80 rounded-md border border-[#222733] bg-[#0D0F17]/95 p-5 shadow-2xl shadow-black/80 backdrop-blur-md flex flex-col gap-4.5 animate-in slide-in-from-top-4 duration-200 pointer-events-auto"
+          className="absolute top-28 right-6 z-40 w-80 rounded-md border border-[#222733] bg-[#0D0F17]/95 p-5 shadow-2xl shadow-black/80 backdrop-blur-md flex flex-col gap-4.5 animate-in slide-in-from-top-4 duration-200 pointer-events-auto"
           style={{ maxHeight: 'calc(100dvh - 120px)', overflowY: 'auto' }}
         >
           {/* Header */}

@@ -119,7 +119,7 @@ export function usePhysicsSync({
             const currentPanX = panXRef.current;
             const currentPanY = panYRef.current;
 
-            const vortexWorldX = (window.innerWidth - 56 - cx - currentPanX) / currentZoom;
+            const vortexWorldX = (window.innerWidth - 72 - cx - currentPanX) / currentZoom;
             const vortexWorldY = (window.innerHeight - 56 - cy - currentPanY) / currentZoom;
 
             const dx = vortexWorldX - body.position.x;

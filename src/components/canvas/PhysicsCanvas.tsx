@@ -246,45 +246,20 @@ export function PhysicsCanvas() {
 
   // Debounced Auto-save to Local Storage & Local Vault (100% client-side, ignored by Git)
   useEffect(() => {
-    let timeout: NodeJS.Timeout;
+    const timeout = setTimeout(() => {
+      const activeNodes = nodes.filter((n) => !n.isDeleting);
+      const activeNodeIds = new Set(activeNodes.map((n) => n.id));
+      const activeConnections = connections.filter(
+        (c) => activeNodeIds.has(c.sourceId) && activeNodeIds.has(c.targetId)
+      );
 
-    const unsubscribe = useGraviStore.subscribe((state) => {
-      clearTimeout(timeout);
-      timeout = setTimeout(() => {
-        const activeNodes = state.nodes.filter((n) => !n.isDeleting);
-        const activeNodeIds = new Set(activeNodes.map((n) => n.id));
-        const activeConnections = state.connections.filter(
-          (c) => activeNodeIds.has(c.sourceId) && activeNodeIds.has(c.targetId)
-        );
+      saveLocalVault(activeNodes, activeConnections);
+      const dataToSave = serializeSnapshot(activeNodes, activeConnections);
+      localStorage.setItem('gravinote-saved-state', JSON.stringify(dataToSave));
+    }, 1000); // 1s debounce
 
-        saveLocalVault(activeNodes, activeConnections);
-        const dataToSave = serializeSnapshot(activeNodes, activeConnections);
-        localStorage.setItem('gravinote-saved-state', JSON.stringify(dataToSave));
-      }, 500); // 500ms debounce
-    });
-
-    return () => {
-      clearTimeout(timeout);
-      unsubscribe();
-    };
-  }, []);
-
-  // Auto-connect nodes when [[Wikilinks]] are written in markdown
-  useEffect(() => {
-    const updatedConns = syncWikilinksWithConnections(nodes, connections);
-    if (updatedConns.length > connections.length) {
-      for (const newConn of updatedConns) {
-        const exists = connections.some(
-          (c) =>
-            (c.sourceId === newConn.sourceId && c.targetId === newConn.targetId) ||
-            (c.sourceId === newConn.targetId && c.targetId === newConn.sourceId)
-        );
-        if (!exists) {
-          addConnection(newConn.sourceId, newConn.targetId, newConn.type);
-        }
-      }
-    }
-  }, [nodes, connections, addConnection]);
+    return () => clearTimeout(timeout);
+  }, [nodes, connections]);
 
   // Sync Matter.js bodies with Zustand nodes list (including dynamic resizing)
   useEffect(() => {

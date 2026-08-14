@@ -86,13 +86,7 @@ export function ConstellationLayer({
               onPointerDown={(e) => onStarPointerDown(c.key, e)}
               onClick={(e) => {
                 e.stopPropagation();
-                // If it's still collapsed after the gesture, the user dragged the
-                // star (pointer ended on another node and fired this click); don't
-                // toggle it back open. Only expand on a genuine tap of a star, or
-                // collapse a halo/chip that was expanded.
-                if (!isCollapsed) {
-                  onToggleCollapse(c.key, c.nodeIds);
-                }
+                onToggleCollapse(c.key, c.nodeIds);
               }}
             >
               <title>

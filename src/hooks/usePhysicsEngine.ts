@@ -14,8 +14,12 @@ export function usePhysicsEngine(gravityY: number) {
     // Create boundaries for 6000x6000px arena
     createArena(engine.world);
 
-    // Create runner for 60 FPS physics updates
-    const runner = Matter.Runner.create();
+    // Create runner for 60 FPS physics updates with fixed delta to prevent maxUpdates warnings
+    const runner = Matter.Runner.create({
+      delta: 1000 / 60,
+    });
+    (runner as any).isFixed = true;
+    (runner as any).maxUpdates = 60;
     runnerRef.current = runner;
     Matter.Runner.run(runner, engine);
 

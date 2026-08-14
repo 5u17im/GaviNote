@@ -11,6 +11,15 @@ interface BackgroundDotsProps {
 export function BackgroundDots({ zoom, panX, panY }: BackgroundDotsProps) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const mouseRef = useRef<{ x: number; y: number }>({ x: -1000, y: -1000 });
+  const zoomRef = useRef(zoom);
+  const panXRef = useRef(panX);
+  const panYRef = useRef(panY);
+
+  useEffect(() => {
+    zoomRef.current = zoom;
+    panXRef.current = panX;
+    panYRef.current = panY;
+  }, [zoom, panX, panY]);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -44,6 +53,9 @@ export function BackgroundDots({ zoom, panX, panY }: BackgroundDotsProps) {
     const draw = () => {
       const width = canvas.width;
       const height = canvas.height;
+      const currentZoom = zoomRef.current;
+      const currentPanX = panXRef.current;
+      const currentPanY = panYRef.current;
 
       // Clear with very dark background space color #0B0F19
       ctx.fillStyle = '#0B0F19';
@@ -54,7 +66,7 @@ export function BackgroundDots({ zoom, panX, panY }: BackgroundDotsProps) {
       const cy = height / 2;
       const maxRadius = Math.max(width, height) * 0.8;
       const bgGlow = ctx.createRadialGradient(cx, cy, 0, cx, cy, maxRadius);
-      bgGlow.addColorStop(0, 'rgba(11, 25, 44, 0.4)'); // slightly lighter blue-gray center
+      bgGlow.addColorStop(0, 'rgba(11, 25, 44, 0.4)');
       bgGlow.addColorStop(1, '#0B0F19');
       ctx.fillStyle = bgGlow;
       ctx.fillRect(0, 0, width, height);
@@ -69,7 +81,7 @@ export function BackgroundDots({ zoom, panX, panY }: BackgroundDotsProps) {
           mouseRef.current.y,
           200
         );
-        mouseGlow.addColorStop(0, 'rgba(0, 229, 255, 0.04)'); // very subtle cian glow
+        mouseGlow.addColorStop(0, 'rgba(0, 229, 255, 0.04)');
         mouseGlow.addColorStop(1, 'rgba(11, 15, 25, 0)');
         ctx.fillStyle = mouseGlow;
         ctx.beginPath();
@@ -78,38 +90,33 @@ export function BackgroundDots({ zoom, panX, panY }: BackgroundDotsProps) {
       }
 
       // Draw Dot Grid
-      const baseGap = 50; // space between dots
-      const step = baseGap * zoom;
+      const baseGap = 50;
+      const step = baseGap * currentZoom;
 
-      // Calculate starting offsets based on camera panning & zoom, anchored at screen center
-      let startX = (cx + panX) % step;
+      let startX = (cx + currentPanX) % step;
       if (startX < 0) startX += step;
-      let startY = (cy + panY) % step;
+      let startY = (cy + currentPanY) % step;
       if (startY < 0) startY += step;
 
       const mouseX = mouseRef.current.x;
       const mouseY = mouseRef.current.y;
-      const maxInfluenceDist = 180; // hover influence range
+      const maxInfluenceDist = 180;
 
-      ctx.fillStyle = 'rgba(240, 244, 255, 0.08)'; // default dot color
+      ctx.fillStyle = 'rgba(240, 244, 255, 0.08)';
 
       for (let x = startX; x < width; x += step) {
         for (let y = startY; y < height; y += step) {
-          // Calculate distance to mouse
           const dx = mouseX - x;
           const dy = mouseY - y;
           const dist = Math.sqrt(dx * dx + dy * dy);
 
-          let dotRadius = 1 * Math.max(0.6, zoom);
+          let dotRadius = 1 * Math.max(0.6, currentZoom);
           let opacity = 0.08;
 
           if (dist < maxInfluenceDist) {
-            // Smooth bell curve influence
             const factor = 1 - dist / maxInfluenceDist;
             opacity = 0.08 + factor * 0.22;
             dotRadius += factor * 1.5;
-
-            // Draw glowing dot
             ctx.fillStyle = `rgba(0, 229, 255, ${opacity})`;
           } else {
             ctx.fillStyle = `rgba(240, 244, 255, ${opacity})`;
@@ -132,7 +139,7 @@ export function BackgroundDots({ zoom, panX, panY }: BackgroundDotsProps) {
       document.removeEventListener('mouseleave', handleMouseLeave);
       cancelAnimationFrame(animationId);
     };
-  }, [zoom, panX, panY]);
+  }, []);
 
   return (
     <canvas

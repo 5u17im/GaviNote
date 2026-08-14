@@ -12,18 +12,18 @@ import {
 } from '../../utils/localVault';
 import { INITIAL_DEMO_NODES, INITIAL_DEMO_CONNECTIONS } from '../canvas/DemoNodes';
 import { 
-  ShieldCheck, 
-  Download, 
-  Upload, 
-  RotateCcw, 
   Trash2, 
   X, 
-  Sparkles, 
-  GitBranch, 
   FolderLock, 
   Layers, 
-  Link as LinkIcon,
-  AlertCircle
+  Radio, 
+  FileDown, 
+  FileUp, 
+  RefreshCw, 
+  Lock, 
+  ArrowRight,
+  ShieldCheck,
+  Check
 } from 'lucide-react';
 
 interface VaultManagerModalProps {
@@ -76,14 +76,13 @@ export function VaultManagerModal({
       const mergedNodes = [...nodes, ...importedNodes];
       onLoadState(mergedNodes, connections);
       saveLocalVault(mergedNodes, connections);
-      alert(`¡Se importaron ${importedNodes.length} notas exitosamente!`);
     }
 
     e.target.value = '';
   };
 
   const handleResetDemo = () => {
-    if (confirm('¿Restaurar las notas demo iniciales? Se reemplazarán tus notas actuales.')) {
+    if (confirm('¿Restaurar el ecosistema completo de NothingSense? Se recargarán los proyectos y sus conexiones.')) {
       onLoadState(INITIAL_DEMO_NODES, INITIAL_DEMO_CONNECTIONS);
       saveLocalVault(INITIAL_DEMO_NODES, INITIAL_DEMO_CONNECTIONS);
       onClose();
@@ -91,7 +90,7 @@ export function VaultManagerModal({
   };
 
   const handleClearAll = () => {
-    if (confirm('¿Eliminar todas las notas de la bóveda? Esta acción no se puede deshacer.')) {
+    if (confirm('¿Vaciar completamente la bóveda? Esta acción borrará todas las notas del lienzo.')) {
       onLoadState([], []);
       clearLocalVault();
       onClose();
@@ -103,98 +102,126 @@ export function VaultManagerModal({
   return (
     <AnimatePresence>
       <div
-        className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-md pointer-events-auto"
+        className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 bg-black/80 backdrop-blur-md pointer-events-auto"
         onClick={onClose}
       >
         <motion.div
-          initial={{ scale: 0.95, opacity: 0 }}
-          animate={{ scale: 1, opacity: 1 }}
-          exit={{ scale: 0.95, opacity: 0 }}
-          transition={{ duration: 0.2 }}
+          initial={{ scale: 0.96, opacity: 0, y: 12 }}
+          animate={{ scale: 1, opacity: 1, y: 0 }}
+          exit={{ scale: 0.96, opacity: 0, y: 12 }}
+          transition={{ duration: 0.2, ease: [0.16, 1, 0.3, 1] }}
           onClick={(e) => e.stopPropagation()}
-          className="w-full max-w-2xl bg-[#0D0F17]/95 border border-white/15 rounded-2xl shadow-2xl overflow-hidden flex flex-col glass-card max-h-[85vh]"
+          className="w-full max-w-3xl bg-[#090D17]/98 border border-white/10 rounded-2xl shadow-[0_24px_64px_rgba(0,0,0,0.8)] flex flex-col max-h-[85vh] overflow-hidden glass-card"
         >
-          {/* Header */}
-          <div className="p-5 border-b border-white/10 flex items-center justify-between bg-[#0B0F19]/80">
-            <div className="flex items-center gap-2.5">
-              <FolderLock className="w-5 h-5 text-emerald-400" />
+          {/* Fixed Header */}
+          <div className="px-6 py-4 border-b border-white/10 flex items-center justify-between bg-[#060911]/90 shrink-0">
+            <div className="flex items-center gap-3.5">
+              <div className="w-10 h-10 rounded-xl bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center text-emerald-400 shadow-[0_0_20px_rgba(16,185,129,0.2)] shrink-0">
+                <FolderLock className="w-5 h-5" />
+              </div>
               <div>
-                <h3 className="font-serif text-lg font-bold text-white">
-                  Bóveda Local & Second Brain
-                </h3>
-                <p className="text-[11px] text-white/50 font-sans">
-                  Gestión de notas, respaldo local y compatibilidad con Obsidian
+                <div className="flex items-center gap-2.5">
+                  <h3 className="text-base font-semibold tracking-tight text-white font-sans">
+                    Bóveda Local & Obsidian Sync
+                  </h3>
+                  <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-mono font-medium bg-emerald-500/15 text-emerald-300 border border-emerald-500/30">
+                    <ShieldCheck className="w-3 h-3 text-emerald-400" /> Aislado de Git
+                  </span>
+                </div>
+                <p className="text-xs text-white/50 font-sans mt-0.5">
+                  Persistencia 100% privada en tu navegador y sincronización compatible con Obsidian
                 </p>
               </div>
             </div>
+
             <button
               onClick={onClose}
-              className="p-1.5 rounded-lg text-white/40 hover:text-white hover:bg-white/10 transition-colors"
+              className="p-2 rounded-xl text-white/40 hover:text-white hover:bg-white/10 transition-colors"
+              title="Cerrar modal (Esc)"
             >
-              <X className="w-5 h-5" />
+              <X className="w-4 h-4" />
             </button>
           </div>
 
-          <div className="p-6 overflow-y-auto space-y-6">
+          {/* Scrollable Content with Strict Flex Bounds */}
+          <div className="p-6 sm:p-7 overflow-y-auto flex-1 min-h-0 space-y-6 custom-scrollbar">
             {/* Git Privacy Banner */}
-            <div className="p-4 rounded-xl bg-emerald-500/10 border border-emerald-500/30 flex items-start gap-3">
-              <ShieldCheck className="w-5 h-5 text-emerald-400 shrink-0 mt-0.5" />
-              <div className="text-xs">
+            <div className="p-4 rounded-xl bg-emerald-950/20 border border-emerald-500/25 flex items-start gap-3.5">
+              <div className="w-8 h-8 rounded-lg bg-emerald-500/10 flex items-center justify-center text-emerald-400 shrink-0 mt-0.5">
+                <Lock className="w-4 h-4" />
+              </div>
+              <div className="text-xs space-y-1">
                 <div className="font-semibold text-emerald-300">
-                  Privacidad 100% Local (Aislado de Git)
+                  Privacidad Garantizada & Protección Local
                 </div>
-                <p className="text-white/70 mt-1 leading-relaxed">
-                  Tus notas personales se guardan en el almacenamiento local de tu navegador y
-                  están completamente excluidas en el archivo <code className="text-emerald-300 font-mono text-[11px]">.gitignore</code>.
-                  Aunque subas cambios de código a Git, tu información privada <strong>nunca se subirá</strong>.
+                <p className="text-white/70 leading-relaxed">
+                  Tus notas se guardan en el almacenamiento local de tu navegador y están totalmente excluidas por el archivo <code className="text-emerald-300 font-mono text-[11px] bg-black/50 px-1.5 py-0.5 rounded border border-emerald-500/30">.gitignore</code>. Ninguna nota privada se enviará a repositorios remotos de Git.
                 </p>
               </div>
             </div>
 
-            {/* Network / Graph Stats */}
+            {/* Metrics Section */}
             <div>
-              <h4 className="font-mono text-[11px] uppercase tracking-wider text-white/60 font-semibold mb-3 flex items-center gap-1.5">
-                <Layers className="w-3.5 h-3.5 text-cyan-400" /> Métricas de tu Red de Pensamiento
-              </h4>
+              <div className="text-[11px] font-mono uppercase tracking-wider text-white/50 font-semibold mb-3 flex items-center gap-1.5">
+                <Layers className="w-3.5 h-3.5 text-cyan-400" />
+                Métricas del Grafo de Pensamiento
+              </div>
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                <div className="p-3 rounded-lg bg-white/[0.03] border border-white/5 text-center">
-                  <div className="font-mono text-xl font-bold text-cyan-400">
+                {/* Total Notes */}
+                <div className="p-3.5 rounded-xl bg-white/[0.02] border border-white/5 border-t-2 border-t-cyan-500/70 flex flex-col items-center justify-center text-center">
+                  <span className="font-mono text-2xl font-bold text-cyan-400 tracking-tight">
                     {stats.totalNotes}
-                  </div>
-                  <div className="text-[10px] text-white/40 uppercase mt-0.5">Notas Totales</div>
+                  </span>
+                  <span className="text-[10px] font-mono tracking-wider text-white/40 uppercase mt-1">
+                    Notas Totales
+                  </span>
                 </div>
-                <div className="p-3 rounded-lg bg-white/[0.03] border border-white/5 text-center">
-                  <div className="font-mono text-xl font-bold text-purple-400">
+
+                {/* Connections */}
+                <div className="p-3.5 rounded-xl bg-white/[0.02] border border-white/5 border-t-2 border-t-purple-500/70 flex flex-col items-center justify-center text-center">
+                  <span className="font-mono text-2xl font-bold text-purple-400 tracking-tight">
                     {stats.totalConnections}
-                  </div>
-                  <div className="text-[10px] text-white/40 uppercase mt-0.5">Conexiones</div>
+                  </span>
+                  <span className="text-[10px] font-mono tracking-wider text-white/40 uppercase mt-1">
+                    Conexiones
+                  </span>
                 </div>
-                <div className="p-3 rounded-lg bg-white/[0.03] border border-white/5 text-center">
-                  <div className="font-mono text-xl font-bold text-amber-400">
+
+                {/* Orphaned Notes */}
+                <div className="p-3.5 rounded-xl bg-white/[0.02] border border-white/5 border-t-2 border-t-amber-500/70 flex flex-col items-center justify-center text-center">
+                  <span className="font-mono text-2xl font-bold text-amber-400 tracking-tight">
                     {stats.orphanedNodes.length}
-                  </div>
-                  <div className="text-[10px] text-white/40 uppercase mt-0.5">Ideas Huérfanas</div>
+                  </span>
+                  <span className="text-[10px] font-mono tracking-wider text-white/40 uppercase mt-1">
+                    Ideas Huérfanas
+                  </span>
                 </div>
-                <div className="p-3 rounded-lg bg-white/[0.03] border border-white/5 text-center">
-                  <div className="font-mono text-xl font-bold text-emerald-400">
+
+                {/* Hubs */}
+                <div className="p-3.5 rounded-xl bg-white/[0.02] border border-white/5 border-t-2 border-t-emerald-500/70 flex flex-col items-center justify-center text-center">
+                  <span className="font-mono text-2xl font-bold text-emerald-400 tracking-tight">
                     {stats.hubs.length}
-                  </div>
-                  <div className="text-[10px] text-white/40 uppercase mt-0.5">Nodos Centrales</div>
+                  </span>
+                  <span className="text-[10px] font-mono tracking-wider text-white/40 uppercase mt-1">
+                    Nodos Centrales
+                  </span>
                 </div>
               </div>
             </div>
 
-            {/* Orphan Nodes (Help user connect ideas) */}
+            {/* Orphan Nodes (If any) */}
             {stats.orphanedNodes.length > 0 && (
-              <div className="p-3.5 rounded-xl bg-amber-500/10 border border-amber-500/20">
-                <div className="flex items-center gap-1.5 text-xs font-semibold text-amber-300 mb-2">
-                  <AlertCircle className="w-4 h-4 text-amber-400" />
-                  Ideas Aisladas sin conexiones ({stats.orphanedNodes.length})
+              <div className="p-4 rounded-xl bg-amber-500/[0.04] border border-amber-500/20 space-y-2.5">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2 text-xs font-semibold text-amber-300">
+                    <Radio className="w-4 h-4 text-amber-400" />
+                    Ideas sin conectar ({stats.orphanedNodes.length})
+                  </div>
+                  <span className="text-[10px] text-white/40 font-mono">
+                    Haz clic para centrar en el lienzo
+                  </span>
                 </div>
-                <p className="text-[11px] text-white/60 mb-2">
-                  Estas notas no están enlazadas a ninguna otra idea. Haz clic para localizarlas y conectarlas:
-                </p>
-                <div className="flex flex-wrap gap-1.5 max-h-[100px] overflow-y-auto">
+                <div className="flex flex-wrap gap-2 max-h-[90px] overflow-y-auto custom-scrollbar pt-1">
                   {stats.orphanedNodes.map((orphan) => (
                     <button
                       key={orphan.id}
@@ -203,31 +230,36 @@ export function VaultManagerModal({
                         onCenterCamera(orphan.initialX, orphan.initialY);
                         onClose();
                       }}
-                      className="px-2 py-0.5 rounded bg-black/40 hover:bg-amber-500/20 text-white/80 hover:text-amber-200 text-[11px] font-mono border border-amber-500/30 transition-colors"
+                      className="px-3 py-1.5 rounded-lg bg-black/40 hover:bg-amber-500/20 text-white/90 hover:text-amber-200 text-xs font-mono border border-amber-500/30 transition-all flex items-center gap-1.5 group shadow-sm"
                     >
-                      {orphan.title || 'Sin Título'}
+                      <span>{orphan.title || 'Sin Título'}</span>
+                      <ArrowRight className="w-3.5 h-3.5 text-amber-400/60 group-hover:text-amber-300 group-hover:translate-x-0.5 transition-transform" />
                     </button>
                   ))}
                 </div>
               </div>
             )}
 
-            {/* Actions Grid */}
+            {/* Operations Grid */}
             <div>
-              <h4 className="font-mono text-[11px] uppercase tracking-wider text-white/60 font-semibold mb-3">
+              <div className="text-[11px] font-mono uppercase tracking-wider text-white/50 font-semibold mb-3">
                 Operaciones de Bóveda
-              </h4>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
                 {/* Export Markdown */}
                 <button
                   onClick={() => exportVaultToMarkdownFiles(nodes)}
-                  className="p-3.5 rounded-xl bg-white/[0.04] hover:bg-white/[0.08] border border-white/10 text-left transition-colors flex items-start gap-3 group"
+                  className="p-4 rounded-xl bg-white/[0.02] hover:bg-cyan-500/[0.06] border border-white/10 hover:border-cyan-500/30 text-left transition-all flex items-start gap-3.5 group"
                 >
-                  <Download className="w-5 h-5 text-cyan-400 shrink-0 group-hover:scale-110 transition-transform" />
-                  <div>
-                    <div className="text-xs font-semibold text-white">Exportar Bóveda (.md)</div>
-                    <div className="text-[11px] text-white/50 mt-0.5">
-                      Descarga todas las notas en formato Markdown compatible con Obsidian.
+                  <div className="w-9 h-9 rounded-xl bg-cyan-500/10 flex items-center justify-center shrink-0 text-cyan-400 group-hover:scale-105 transition-transform">
+                    <FileDown className="w-4 h-4" />
+                  </div>
+                  <div className="min-w-0">
+                    <div className="text-xs font-semibold text-white group-hover:text-cyan-200 transition-colors">
+                      Exportar Bóveda (.md)
+                    </div>
+                    <div className="text-[11px] text-white/50 mt-1 leading-relaxed">
+                      Descarga todas las notas en archivos Markdown compatibles con Obsidian.
                     </div>
                   </div>
                 </button>
@@ -235,13 +267,17 @@ export function VaultManagerModal({
                 {/* Import Markdown */}
                 <button
                   onClick={() => fileInputRef.current?.click()}
-                  className="p-3.5 rounded-xl bg-white/[0.04] hover:bg-white/[0.08] border border-white/10 text-left transition-colors flex items-start gap-3 group"
+                  className="p-4 rounded-xl bg-white/[0.02] hover:bg-purple-500/[0.06] border border-white/10 hover:border-purple-500/30 text-left transition-all flex items-start gap-3.5 group"
                 >
-                  <Upload className="w-5 h-5 text-purple-400 shrink-0 group-hover:scale-110 transition-transform" />
-                  <div>
-                    <div className="text-xs font-semibold text-white">Importar Archivos .md</div>
-                    <div className="text-[11px] text-white/50 mt-0.5">
-                      Carga archivos Markdown existentes para agregarlos a tu lienzo.
+                  <div className="w-9 h-9 rounded-xl bg-purple-500/10 flex items-center justify-center shrink-0 text-purple-400 group-hover:scale-105 transition-transform">
+                    <FileUp className="w-4 h-4" />
+                  </div>
+                  <div className="min-w-0">
+                    <div className="text-xs font-semibold text-white group-hover:text-purple-200 transition-colors">
+                      Importar Archivos .md
+                    </div>
+                    <div className="text-[11px] text-white/50 mt-1 leading-relaxed">
+                      Carga archivos Markdown de tu ordenador directamente al lienzo.
                     </div>
                   </div>
                 </button>
@@ -254,30 +290,38 @@ export function VaultManagerModal({
                   className="hidden"
                 />
 
-                {/* Reset to Demo */}
+                {/* Reset Demo */}
                 <button
                   onClick={handleResetDemo}
-                  className="p-3.5 rounded-xl bg-white/[0.04] hover:bg-white/[0.08] border border-white/10 text-left transition-colors flex items-start gap-3 group"
+                  className="p-4 rounded-xl bg-white/[0.02] hover:bg-amber-500/[0.06] border border-white/10 hover:border-amber-500/30 text-left transition-all flex items-start gap-3.5 group"
                 >
-                  <RotateCcw className="w-5 h-5 text-amber-400 shrink-0 group-hover:scale-110 transition-transform" />
-                  <div>
-                    <div className="text-xs font-semibold text-white">Restaurar Notas Demo</div>
-                    <div className="text-[11px] text-white/50 mt-0.5">
-                      Vuelve al conjunto de notas de bienvenida predeterminado.
+                  <div className="w-9 h-9 rounded-xl bg-amber-500/10 flex items-center justify-center shrink-0 text-amber-400 group-hover:scale-105 transition-transform">
+                    <RefreshCw className="w-4 h-4" />
+                  </div>
+                  <div className="min-w-0">
+                    <div className="text-xs font-semibold text-white group-hover:text-amber-200 transition-colors">
+                      Restaurar NothingSense Hub
+                    </div>
+                    <div className="text-[11px] text-white/50 mt-1 leading-relaxed">
+                      Recarga el mapa completo del ecosistema con sus conexiones físicas.
                     </div>
                   </div>
                 </button>
 
-                {/* Clear Vault */}
+                {/* Clear All */}
                 <button
                   onClick={handleClearAll}
-                  className="p-3.5 rounded-xl bg-rose-500/10 hover:bg-rose-500/20 border border-rose-500/20 text-left transition-colors flex items-start gap-3 group"
+                  className="p-4 rounded-xl bg-white/[0.02] hover:bg-rose-500/[0.08] border border-white/10 hover:border-rose-500/30 text-left transition-all flex items-start gap-3.5 group"
                 >
-                  <Trash2 className="w-5 h-5 text-rose-400 shrink-0 group-hover:scale-110 transition-transform" />
-                  <div>
-                    <div className="text-xs font-semibold text-rose-300">Vaciar Bóveda</div>
-                    <div className="text-[11px] text-rose-200/60 mt-0.5">
-                      Borra todas las notas y conexiones del almacenamiento local.
+                  <div className="w-9 h-9 rounded-xl bg-rose-500/10 flex items-center justify-center shrink-0 text-rose-400 group-hover:scale-105 transition-transform">
+                    <Trash2 className="w-4 h-4" />
+                  </div>
+                  <div className="min-w-0">
+                    <div className="text-xs font-semibold text-white group-hover:text-rose-200 transition-colors">
+                      Vaciar Bóveda
+                    </div>
+                    <div className="text-[11px] text-white/50 mt-1 leading-relaxed">
+                      Limpia todas las notas y conexiones del almacenamiento local.
                     </div>
                   </div>
                 </button>
@@ -285,13 +329,20 @@ export function VaultManagerModal({
             </div>
           </div>
 
-          {/* Footer */}
-          <div className="p-4 border-t border-white/5 bg-[#090C14] flex items-center justify-end">
+          {/* Fixed Footer with Clean Flex Layout */}
+          <div className="px-6 py-3.5 border-t border-white/10 bg-[#060911]/90 flex items-center justify-between shrink-0">
+            <div className="flex items-center gap-2 text-xs text-white/40 font-mono">
+              <kbd className="px-2 py-0.5 rounded bg-white/10 border border-white/10 text-[10px] text-white/60">
+                ESC
+              </kbd>
+              <span>para cerrar</span>
+            </div>
             <button
               onClick={onClose}
-              className="px-4 py-1.5 rounded-lg bg-white/10 hover:bg-white/15 text-xs text-white font-mono transition-colors"
+              className="px-5 py-1.5 rounded-xl bg-cyan-500/10 hover:bg-cyan-500/20 text-cyan-300 border border-cyan-500/30 font-sans text-xs font-semibold transition-all flex items-center gap-1.5 shadow-[0_0_12px_rgba(6,182,212,0.15)]"
             >
-              Cerrar
+              <Check className="w-3.5 h-3.5" />
+              <span>Listo</span>
             </button>
           </div>
         </motion.div>

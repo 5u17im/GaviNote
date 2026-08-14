@@ -28,16 +28,26 @@ import { HUDPanel } from '../hud/HUDPanel';
 import { UndoToast } from '../hud/UndoToast';
 import { ConnectionLegend } from '../hud/ConnectionLegend';
 import { PresentationBar } from '../hud/PresentationBar';
+import { NoteFocusDrawer } from '../hud/NoteFocusDrawer';
+import { QuickSwitcher } from '../hud/QuickSwitcher';
+import { VaultManagerModal } from '../hud/VaultManagerModal';
 import { NodeContextMenu } from '../nodes/NodeContextMenu';
 import { DisintegrationEffect, triggerDisintegration } from '../particles/DisintegrationEffect';
 import { CATEGORY_INFO } from '../nodes/registry';
 import { calculateOptimalDimensions } from '../../utils/dimensions';
 import { logError } from '../../utils/logger';
 import { validateSnapshot, serializeSnapshot } from '../../utils/serializer';
+import { syncWikilinksWithConnections, findNodeByTitle } from '../../utils/wikilinks';
+import { saveLocalVault, loadLocalVault } from '../../utils/localVault';
 import { commandBus } from '../../utils/commandBus';
 
 export function PhysicsCanvas() {
   const containerRef = useRef<HTMLDivElement | null>(null);
+
+  // Second Brain UI States
+  const [focusNodeId, setFocusNodeId] = useState<string | null>(null);
+  const [isQuickSwitcherOpen, setIsQuickSwitcherOpen] = useState(false);
+  const [isVaultManagerOpen, setIsVaultManagerOpen] = useState(false);
   
   // Zustand Store
   const {
@@ -183,14 +193,29 @@ export function PhysicsCanvas() {
     return () => window.removeEventListener('resize', handleResize);
   }, []);
 
-  // Restore state from Local Storage or load demo on mount
+  // Restore state from Local Storage / Local Vault or load demo on mount
   useEffect(() => {
+    // 1. Try loading from private local vault first
+    const vault = loadLocalVault();
+    if (vault && vault.nodes.length > 0) {
+      const updatedNodes = vault.nodes.map((node) => {
+        const dims = calculateOptimalDimensions(node.title, node.content, node.tags);
+        return {
+          ...node,
+          width: dims.width,
+          height: dims.height,
+        };
+      });
+      loadState(updatedNodes, vault.connections);
+      return;
+    }
+
+    // 2. Fallback to existing saved state if present
     const saved = localStorage.getItem('gravinote-saved-state');
     if (saved) {
       try {
         const snapshot = validateSnapshot(JSON.parse(saved));
         if (snapshot && snapshot.nodes.length > 0) {
-          // Auto-adjust dimensions of stored nodes to prevent text clipping
           const updatedNodes = snapshot.nodes.map((node) => {
             const dims = calculateOptimalDimensions(node.title, node.content, node.tags);
             return {
@@ -207,7 +232,7 @@ export function PhysicsCanvas() {
       }
     }
     
-    // Fallback: load demo micro-ecosystem with auto-sized node cards
+    // 3. Fallback: load demo micro-ecosystem with auto-sized node cards
     const demoNodes = INITIAL_DEMO_NODES.map((node) => {
       const dims = calculateOptimalDimensions(node.title, node.content, node.tags);
       return {
@@ -219,7 +244,7 @@ export function PhysicsCanvas() {
     loadState(demoNodes, INITIAL_DEMO_CONNECTIONS);
   }, [loadState]);
 
-  // Debounced Auto-save to Local Storage (excluding deleting nodes and their connections)
+  // Debounced Auto-save to Local Storage & Local Vault (100% client-side, ignored by Git)
   useEffect(() => {
     let timeout: NodeJS.Timeout;
 
@@ -232,6 +257,7 @@ export function PhysicsCanvas() {
           (c) => activeNodeIds.has(c.sourceId) && activeNodeIds.has(c.targetId)
         );
 
+        saveLocalVault(activeNodes, activeConnections);
         const dataToSave = serializeSnapshot(activeNodes, activeConnections);
         localStorage.setItem('gravinote-saved-state', JSON.stringify(dataToSave));
       }, 500); // 500ms debounce
@@ -242,6 +268,23 @@ export function PhysicsCanvas() {
       unsubscribe();
     };
   }, []);
+
+  // Auto-connect nodes when [[Wikilinks]] are written in markdown
+  useEffect(() => {
+    const updatedConns = syncWikilinksWithConnections(nodes, connections);
+    if (updatedConns.length > connections.length) {
+      for (const newConn of updatedConns) {
+        const exists = connections.some(
+          (c) =>
+            (c.sourceId === newConn.sourceId && c.targetId === newConn.targetId) ||
+            (c.sourceId === newConn.targetId && c.targetId === newConn.sourceId)
+        );
+        if (!exists) {
+          addConnection(newConn.sourceId, newConn.targetId, newConn.type);
+        }
+      }
+    }
+  }, [nodes, connections, addConnection]);
 
   // Sync Matter.js bodies with Zustand nodes list (including dynamic resizing)
   useEffect(() => {
@@ -731,6 +774,81 @@ export function PhysicsCanvas() {
     return () => el.removeEventListener('wheel', onWheelNative);
   }, [setZoom]);
 
+  // Global shortcut listeners (Ctrl+K for Quick Switcher)
+  useEffect(() => {
+    const handleGlobalShortcuts = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') {
+        e.preventDefault();
+        setIsQuickSwitcherOpen((prev) => !prev);
+      }
+    };
+
+    window.addEventListener('keydown', handleGlobalShortcuts);
+    return () => window.removeEventListener('keydown', handleGlobalShortcuts);
+  }, []);
+
+  // Second Brain Navigation & Creation Handlers
+  const handleWikilinkClick = (targetTitle: string) => {
+    const target = findNodeByTitle(nodes, targetTitle);
+    if (target) {
+      selectNode(target.id);
+      recenterOnWorld(target.initialX, target.initialY);
+      setFocusNodeId(target.id);
+    } else {
+      // Auto-create new linked note if it does not exist
+      const newId = addNode({
+        title: targetTitle,
+        content: '',
+        tags: [],
+        category: 'idea',
+        initialX: (Math.random() - 0.5) * 300 - panX / zoom,
+        initialY: (Math.random() - 0.5) * 200 - panY / zoom,
+        width: 240,
+        height: 120,
+      });
+      selectNode(newId);
+      setFocusNodeId(newId);
+    }
+  };
+
+  const handleCreateLinkedNode = (fromNodeId: string, targetTitle: string) => {
+    const fromNode = nodes.find((n) => n.id === fromNodeId);
+    const baseX = fromNode ? fromNode.initialX : 0;
+    const baseY = fromNode ? fromNode.initialY : 0;
+    const offsetX = (Math.random() - 0.5) * 220;
+    const offsetY = (Math.random() - 0.5) * 180;
+
+    const newId = addNode({
+      title: targetTitle,
+      content: '',
+      tags: fromNode ? [...fromNode.tags] : [],
+      category: 'idea',
+      initialX: baseX + offsetX,
+      initialY: baseY + offsetY,
+      width: 240,
+      height: 120,
+    });
+
+    addConnection(fromNodeId, newId, 'apoyo');
+    selectNode(newId);
+    setFocusNodeId(newId);
+  };
+
+  const handleQuickCreateNote = (title: string) => {
+    const newId = addNode({
+      title,
+      content: '',
+      tags: [],
+      category: 'idea',
+      initialX: -panX / zoom + (Math.random() - 0.5) * 80,
+      initialY: -panY / zoom + (Math.random() - 0.5) * 80,
+      width: 240,
+      height: 120,
+    });
+    selectNode(newId);
+    setFocusNodeId(newId);
+  };
+
   const cx = viewport.width / 2;
   const cy = viewport.height / 2;
 
@@ -795,12 +913,18 @@ export function PhysicsCanvas() {
           }
           onDragStart={handleNodePointerDown}
           onContextMenu={(id, x, y) => setContextMenu({ nodeId: id, x, y })}
+          onOpenFocus={(id) => setFocusNodeId(id)}
+          onWikilinkClick={handleWikilinkClick}
           domRefs={domRefs}
         />
       </div>
 
       {/* Settings HUD panel */}
-      <HUDPanel />
+      <HUDPanel 
+        onOpenQuickSwitcher={() => setIsQuickSwitcherOpen(true)}
+        onOpenVaultManager={() => setIsVaultManagerOpen(true)}
+        onOpenFocus={(id) => setFocusNodeId(id)}
+      />
 
       {/* Connection telemetry legend */}
       <ConnectionLegend />
@@ -822,6 +946,46 @@ export function PhysicsCanvas() {
           onRecenter={recenterOnWorld}
         />
       )}
+
+      {/* Second Brain Focus Drawer */}
+      <NoteFocusDrawer
+        nodeId={focusNodeId}
+        nodes={nodes}
+        isOpen={Boolean(focusNodeId)}
+        onClose={() => setFocusNodeId(null)}
+        onUpdateNode={(id, patch) => updateNode(id, patch)}
+        onDeleteNode={(id) => {
+          handleRemoveNode(id);
+          setFocusNodeId(null);
+        }}
+        onSelectNode={(id) => selectNode(id)}
+        onCreateLinkedNode={handleCreateLinkedNode}
+        onCenterCamera={(wx, wy) => recenterOnWorld(wx, wy)}
+      />
+
+      {/* Quick Switcher (Ctrl+K) */}
+      <QuickSwitcher
+        isOpen={isQuickSwitcherOpen}
+        onClose={() => setIsQuickSwitcherOpen(false)}
+        nodes={nodes}
+        onSelectNode={(id) => {
+          selectNode(id);
+          setFocusNodeId(id);
+        }}
+        onCreateNote={handleQuickCreateNote}
+        onCenterCamera={(wx, wy) => recenterOnWorld(wx, wy)}
+      />
+
+      {/* Local Vault Manager Modal */}
+      <VaultManagerModal
+        isOpen={isVaultManagerOpen}
+        onClose={() => setIsVaultManagerOpen(false)}
+        nodes={nodes}
+        connections={connections}
+        onLoadState={(newNodes, newConns) => loadState(newNodes, newConns)}
+        onSelectNode={(id) => selectNode(id)}
+        onCenterCamera={(wx, wy) => recenterOnWorld(wx, wy)}
+      />
 
       {/* Black Hole (Gravity Trash Vortex) UI */}
       <div 
@@ -850,6 +1014,10 @@ export function PhysicsCanvas() {
           onClose={() => setContextMenu(null)}
           onEdit={() => {
             commandBus.emit('editNode', contextMenu.nodeId);
+            setContextMenu(null);
+          }}
+          onOpenFocus={() => {
+            setFocusNodeId(contextMenu.nodeId);
             setContextMenu(null);
           }}
           onDelete={() => {

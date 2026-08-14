@@ -46,3 +46,15 @@ AGENTS.md
 .specify/
 .opencode/
 specs/
+
+# Local Second Brain & Vaults (100% local, never commit user notes/vault data)
+vault/
+vaults/
+local_vault/
+user_data/
+notes_data/
+*.vault.json
+*.local.md
+*.vault.md
+*.vault.zip
+

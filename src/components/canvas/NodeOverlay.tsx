@@ -12,6 +12,8 @@ interface NodeOverlayProps {
   onDragStart: (e: React.PointerEvent<HTMLDivElement>, id: string) => void;
   onContextMenu: (id: string, x: number, y: number) => void;
   domRefs: React.MutableRefObject<Map<string, HTMLElement>>;
+  onOpenFocus?: (id: string) => void;
+  onWikilinkClick?: (targetTitle: string) => void;
 }
 
 export function NodeOverlay({
@@ -22,6 +24,8 @@ export function NodeOverlay({
   onDragStart,
   onContextMenu,
   domRefs,
+  onOpenFocus,
+  onWikilinkClick,
 }: NodeOverlayProps) {
   return (
     <div className="absolute inset-0 w-full h-full pointer-events-none" style={{ zIndex: 10 }}>
@@ -34,6 +38,8 @@ export function NodeOverlay({
           onUpdate={onUpdate}
           onDragStart={onDragStart}
           onContextMenu={(x, y) => onContextMenu(node.id, x, y)}
+          onOpenFocus={onOpenFocus}
+          onWikilinkClick={onWikilinkClick}
           domRef={(el) => {
             if (el) {
               domRefs.current.set(node.id, el);
@@ -46,3 +52,4 @@ export function NodeOverlay({
     </div>
   );
 }
+

@@ -20,10 +20,23 @@ import {
   Search,
   Orbit,
   Play,
-  Tag
+  Tag,
+  FolderLock,
+  Brain,
+  Layers
 } from 'lucide-react';
 
-export function HUDPanel() {
+interface HUDPanelProps {
+  onOpenQuickSwitcher?: () => void;
+  onOpenVaultManager?: () => void;
+  onOpenFocus?: (id: string) => void;
+}
+
+export function HUDPanel({
+  onOpenQuickSwitcher,
+  onOpenVaultManager,
+  onOpenFocus,
+}: HUDPanelProps = {}) {
   const [isOpen, setIsOpen] = useState(false);
   const [showHelp, setShowHelp] = useState(false);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
@@ -31,6 +44,7 @@ export function HUDPanel() {
   const {
     nodes,
     connections,
+    selectedId,
     physicsConfig,
     searchQuery,
     setSearchQuery,
@@ -126,37 +140,48 @@ export function HUDPanel() {
 
   return (
     <>
-      {/* 0. Search / Filter (Top Left) */}
-      <div className="fixed top-10 left-10 z-40 pointer-events-auto">
-        <div className="flex items-center gap-2 rounded-md border border-[#222733] bg-[#0D0F17]/95 px-3 py-2 shadow-xl backdrop-blur-md focus-within:border-[#00E5FF]/40 transition-colors">
-          <Search size={14} aria-hidden="true" className="text-neutral-500 shrink-0" />
-          <input
-            type="text"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Buscar por título, contenido o tag…"
-            aria-label="Buscar notas por título, contenido o tag"
-            className="w-52 bg-transparent text-xs text-white placeholder:text-neutral-600 font-mono outline-none"
-          />
-          {searchQuery && (
-            <>
-              <span className="font-mono text-[10px] text-neutral-500 shrink-0 tabular-nums">
-                {matchCount}
-              </span>
-              <button
-                onClick={() => setSearchQuery('')}
-                aria-label="Limpiar búsqueda"
-                className="text-white/40 hover:text-white transition-colors cursor-pointer shrink-0"
-              >
-                <X size={13} aria-hidden="true" />
-              </button>
-            </>
-          )}
+      {/* 0. Search / Filter & Quick Switcher (Top Left) */}
+      <div className="fixed top-10 left-10 z-40 pointer-events-auto flex items-center gap-2">
+        <div 
+          onClick={() => onOpenQuickSwitcher?.()}
+          className="flex items-center gap-2 rounded-md border border-[#222733] bg-[#0D0F17]/95 px-3 py-2 shadow-xl backdrop-blur-md hover:border-[#00E5FF]/40 cursor-pointer transition-colors group"
+        >
+          <Search size={14} aria-hidden="true" className="text-neutral-500 group-hover:text-cyan-400 shrink-0" />
+          <span className="w-48 text-xs text-white/50 font-mono truncate select-none">
+            Buscar nota... (Ctrl+K)
+          </span>
+          <kbd className="px-1.5 py-0.5 text-[9px] font-mono bg-white/5 text-white/40 rounded border border-white/10">
+            ⌘K
+          </kbd>
         </div>
       </div>
 
       {/* 1. Quick Floating Actions (Top Right) */}
       <div className="fixed top-10 right-6 z-40 flex items-center gap-2 pointer-events-auto">
+        {/* Local Vault Manager (Second Brain) */}
+        {onOpenVaultManager && (
+          <button
+            onClick={onOpenVaultManager}
+            title="Bóveda Local & Second Brain (100% Privado / Git-Safe)"
+            aria-label="Abrir gestor de bóveda local"
+            className="p-3 rounded-md border border-emerald-500/40 bg-emerald-950/30 hover:bg-emerald-900/40 text-emerald-300 transition-all shadow-xl hover:scale-105 active:scale-95 flex items-center justify-center cursor-pointer backdrop-blur-md group"
+          >
+            <FolderLock size={16} aria-hidden="true" className="group-hover:rotate-6 transition-transform" />
+          </button>
+        )}
+
+        {/* Focus Mode button for selected note */}
+        {selectedId && onOpenFocus && (
+          <button
+            onClick={() => onOpenFocus(selectedId)}
+            title="Abrir nota seleccionada en Modo Focus"
+            aria-label="Modo Focus"
+            className="p-3 rounded-md border border-cyan-500/40 bg-cyan-950/40 text-cyan-300 transition-all shadow-xl hover:scale-105 active:scale-95 flex items-center justify-center cursor-pointer backdrop-blur-md animate-pulse"
+          >
+            <Brain size={16} aria-hidden="true" />
+          </button>
+        )}
+
         {/* Quick Add Node */}
         <button
           onClick={handleQuickAdd}
@@ -192,7 +217,7 @@ export function HUDPanel() {
           <Orbit size={16} aria-hidden="true" />
         </button>
 
-        {/* Grouping mode: by graph vs by shared tags (Idea 5) */}
+        {/* Grouping mode: by graph vs by shared tags */}
         <button
           onClick={() => setConstellationMode(constellationMode === 'tags' ? 'graph' : 'tags')}
           aria-pressed={constellationMode === 'tags'}

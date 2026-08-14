@@ -4,8 +4,10 @@ import React, { useState, useEffect } from 'react';
 import { NodeMeta } from '../../types/node.types';
 import { CATEGORY_INFO } from './registry';
 import { NodeEditor } from './NodeEditor';
+import { MarkdownContent } from './MarkdownContent';
 import { calculateOptimalDimensions } from '../../utils/dimensions';
 import { commandBus } from '../../utils/commandBus';
+import { Maximize2 } from 'lucide-react';
 
 interface NodeCardProps {
   node: NodeMeta;
@@ -15,6 +17,8 @@ interface NodeCardProps {
   onDragStart: (e: React.PointerEvent<HTMLDivElement>, id: string) => void;
   onContextMenu: (x: number, y: number) => void;
   domRef: (el: HTMLDivElement | null) => void;
+  onOpenFocus?: (id: string) => void;
+  onWikilinkClick?: (targetTitle: string) => void;
 }
 
 export function NodeCard({
@@ -25,6 +29,8 @@ export function NodeCard({
   onDragStart,
   onContextMenu,
   domRef,
+  onOpenFocus,
+  onWikilinkClick,
 }: NodeCardProps) {
   const [isEditing, setIsEditing] = useState(false);
 
@@ -45,12 +51,16 @@ export function NodeCard({
 
   const handleDoubleClick = (e: React.MouseEvent) => {
     e.stopPropagation();
-    setIsEditing(true);
+    if (onOpenFocus) {
+      onOpenFocus(node.id);
+    } else {
+      setIsEditing(true);
+    }
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (isEditing) return;
-    // Enter / Space enters edit mode for the focused node (RNF-02 keyboard support)
+    // Enter / Space enters edit mode for the focused node
     if (e.key === 'Enter') {
       e.preventDefault();
       e.stopPropagation();
@@ -104,7 +114,7 @@ export function NodeCard({
           e.stopPropagation();
         }
       }}
-      className="glass-card p-[3px] rounded-md select-none z-10 hover:border-white/20 transition-colors pointer-events-auto flex flex-col focus:outline-none focus-visible:ring-2 focus-visible:ring-white/40"
+      className="glass-card p-[3px] rounded-md select-none z-10 hover:border-white/20 transition-colors pointer-events-auto flex flex-col focus:outline-none focus-visible:ring-2 focus-visible:ring-white/40 group/card"
     >
       {isEditing ? (
         <div className="w-full h-full p-3 bg-[#0D0F17]/95 rounded-[3px] border border-white/5 flex flex-col">
@@ -116,7 +126,7 @@ export function NodeCard({
           />
         </div>
       ) : (
-        <div className="w-full h-full py-2.5 px-3 bg-[#0D0F17]/80 rounded-[3px] border border-white/5 flex flex-col justify-between pointer-events-none overflow-hidden">
+        <div className="w-full h-full py-2.5 px-3 bg-[#0D0F17]/80 rounded-[3px] border border-white/5 flex flex-col justify-between overflow-hidden">
           {/* Header */}
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-1.5">
@@ -131,12 +141,26 @@ export function NodeCard({
                 <span className="text-[9px] animate-pulse" title="Fijado en el espacio">📌</span>
               )}
             </div>
-            <span className="text-[9px] text-white/30 font-mono">
-              {new Date(node.createdAt).toLocaleTimeString('es-ES', {
-                hour: '2-digit',
-                minute: '2-digit',
-              })}
-            </span>
+            <div className="flex items-center gap-1">
+              {onOpenFocus && (
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onOpenFocus(node.id);
+                  }}
+                  className="opacity-0 group-hover/card:opacity-100 p-0.5 rounded text-white/40 hover:text-cyan-400 hover:bg-white/10 transition-all pointer-events-auto"
+                  title="Abrir en Modo Focus (Editor Profundo)"
+                >
+                  <Maximize2 className="w-2.5 h-2.5" />
+                </button>
+              )}
+              <span className="text-[9px] text-white/30 font-mono">
+                {new Date(node.createdAt).toLocaleTimeString('es-ES', {
+                  hour: '2-digit',
+                  minute: '2-digit',
+                })}
+              </span>
+            </div>
           </div>
 
           {/* Title */}
@@ -144,10 +168,15 @@ export function NodeCard({
             {node.title || 'Sin Título'}
           </h3>
 
-          {/* Content preview */}
-          <p className="font-sans text-[10.5px] text-white/70 line-clamp-2 mt-1 max-h-[32px] overflow-hidden leading-normal">
-            {node.content || 'Sin contenido. Haz doble clic para editar.'}
-          </p>
+          {/* Markdown Content preview */}
+          <div className="mt-1 max-h-[36px] overflow-hidden leading-tight">
+            <MarkdownContent
+              content={node.content}
+              compact={true}
+              accentColor={info.color}
+              onWikilinkClick={onWikilinkClick}
+            />
+          </div>
 
           {/* Tags footer */}
           {node.tags.length > 0 && (
@@ -171,3 +200,4 @@ export function NodeCard({
     </div>
   );
 }
+

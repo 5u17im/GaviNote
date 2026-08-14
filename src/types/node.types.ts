@@ -11,8 +11,11 @@ export interface NodeMeta {
   width: number;
   height: number;
   createdAt: number;
+  updatedAt?: number;
   isPinned?: boolean;
   isDeleting?: boolean;
+  wikilinks?: string[];
+  isVaultNode?: boolean;
 }
 
 export type ConnectionType = 'neutra' | 'apoyo' | 'conflicto';

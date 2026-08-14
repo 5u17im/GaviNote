@@ -10,6 +10,7 @@ interface NodeContextMenuProps {
   y: number;
   onClose: () => void;
   onEdit: () => void;
+  onOpenFocus?: () => void;
   onDelete: () => void;
   onChangeCategory: (category: NodeCategory) => void;
   isPinned: boolean;
@@ -21,6 +22,7 @@ export function NodeContextMenu({
   y,
   onClose,
   onEdit,
+  onOpenFocus,
   onDelete,
   onChangeCategory,
   isPinned,
@@ -44,7 +46,7 @@ export function NodeContextMenu({
   return (
     <div
       ref={menuRef}
-      className="fixed z-50 min-w-[190px] rounded-md border border-[#222733] bg-[#0D0F17]/95 p-1.5 shadow-2xl shadow-black/80 backdrop-blur-md font-mono text-neutral-300 animate-in fade-in zoom-in-95 duration-100"
+      className="fixed z-50 min-w-[200px] rounded-md border border-[#222733] bg-[#0D0F17]/95 p-1.5 shadow-2xl shadow-black/80 backdrop-blur-md font-mono text-neutral-300 animate-in fade-in zoom-in-95 duration-100"
       style={{
         left: `${x}px`,
         top: `${y}px`,
@@ -58,6 +60,21 @@ export function NodeContextMenu({
       </div>
 
       <div className="mt-1 flex flex-col gap-0.5">
+        {onOpenFocus && (
+          <button
+            onClick={() => {
+              onOpenFocus();
+              onClose();
+            }}
+            className="w-full flex items-center justify-between px-3 py-2 text-xs rounded-sm hover:bg-neutral-800/60 transition-colors cursor-pointer group text-cyan-300"
+          >
+            <div className="flex items-center gap-2.5">
+              <span className="text-cyan-400 text-xs">🔍</span>
+              <span>Modo Focus & Backlinks</span>
+            </div>
+          </button>
+        )}
+
         <button
           onClick={() => {
             onEdit();
@@ -67,7 +84,7 @@ export function NodeContextMenu({
         >
           <div className="flex items-center gap-2.5">
             <Edit2 size={12} className="text-neutral-500 group-hover:text-neutral-300 transition-colors" />
-            <span>Editar Contenido</span>
+            <span>Editar Rápido</span>
           </div>
         </button>
 

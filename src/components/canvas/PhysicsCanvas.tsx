@@ -2,6 +2,7 @@
 
 import React, { useEffect, useRef, useState, useMemo } from 'react';
 import Matter from 'matter-js';
+import { NodeMeta } from '../../types/node.types';
 import { useGraviStore } from '../../store/useGraviStore';
 import { usePhysicsEngine } from '../../hooks/usePhysicsEngine';
 import { usePhysicsSync } from '../../hooks/usePhysicsSync';
@@ -35,10 +36,8 @@ import { NodeContextMenu } from '../nodes/NodeContextMenu';
 import { DisintegrationEffect, triggerDisintegration } from '../particles/DisintegrationEffect';
 import { CATEGORY_INFO } from '../nodes/registry';
 import { calculateOptimalDimensions } from '../../utils/dimensions';
-import { logError } from '../../utils/logger';
-import { validateSnapshot, serializeSnapshot } from '../../utils/serializer';
-import { syncWikilinksWithConnections, findNodeByTitle } from '../../utils/wikilinks';
-import { saveLocalVault, loadLocalVault } from '../../utils/localVault';
+import { findNodeByTitle } from '../../utils/wikilinks';
+import { saveLocalVault } from '../../utils/localVault';
 import { commandBus } from '../../utils/commandBus';
 
 export function PhysicsCanvas() {
@@ -60,7 +59,6 @@ export function PhysicsCanvas() {
     collapsedClusters,
     toggleCollapse,
     expandAll,
-    setConstellationMode,
     loadViewState,
     physicsConfig,
     addNode,
@@ -193,30 +191,13 @@ export function PhysicsCanvas() {
     return () => window.removeEventListener('resize', handleResize);
   }, []);
 
-  // Restore state from Local Storage / Local Vault or load demo on mount
+  // Load state directly from local Markdown files via /api/vault or Local Vault
   useEffect(() => {
-    // 1. Try loading from private local vault first
-    const vault = loadLocalVault();
-    if (vault && vault.nodes.length > 0) {
-      const updatedNodes = vault.nodes.map((node) => {
-        const dims = calculateOptimalDimensions(node.title, node.content, node.tags);
-        return {
-          ...node,
-          width: dims.width,
-          height: dims.height,
-        };
-      });
-      loadState(updatedNodes, vault.connections);
-      return;
-    }
-
-    // 2. Fallback to existing saved state if present
-    const saved = localStorage.getItem('gravinote-saved-state');
-    if (saved) {
-      try {
-        const snapshot = validateSnapshot(JSON.parse(saved));
-        if (snapshot && snapshot.nodes.length > 0) {
-          const updatedNodes = snapshot.nodes.map((node) => {
+    fetch('/api/vault')
+      .then((res) => res.json())
+      .then((data) => {
+        if (data && data.success && Array.isArray(data.nodes) && data.nodes.length > 0) {
+          const updatedNodes = data.nodes.map((node: NodeMeta) => {
             const dims = calculateOptimalDimensions(node.title, node.content, node.tags);
             return {
               ...node,
@@ -224,27 +205,36 @@ export function PhysicsCanvas() {
               height: dims.height,
             };
           });
-          loadState(updatedNodes, snapshot.connections);
+          loadState(updatedNodes, data.connections || []);
+          saveLocalVault(updatedNodes, data.connections || []);
           return;
         }
-      } catch (err) {
-        logError("Failed to restore saved local storage state:", err);
-      }
-    }
-    
-    // 3. Fallback: load demo micro-ecosystem with auto-sized node cards
-    const demoNodes = INITIAL_DEMO_NODES.map((node) => {
-      const dims = calculateOptimalDimensions(node.title, node.content, node.tags);
-      return {
-        ...node,
-        width: dims.width,
-        height: dims.height,
-      };
-    });
-    loadState(demoNodes, INITIAL_DEMO_CONNECTIONS);
+
+        // Fallback to local demo if API returns empty
+        const demoNodes = INITIAL_DEMO_NODES.map((node) => {
+          const dims = calculateOptimalDimensions(node.title, node.content, node.tags);
+          return {
+            ...node,
+            width: dims.width,
+            height: dims.height,
+          };
+        });
+        loadState(demoNodes, INITIAL_DEMO_CONNECTIONS);
+      })
+      .catch(() => {
+        const demoNodes = INITIAL_DEMO_NODES.map((node) => {
+          const dims = calculateOptimalDimensions(node.title, node.content, node.tags);
+          return {
+            ...node,
+            width: dims.width,
+            height: dims.height,
+          };
+        });
+        loadState(demoNodes, INITIAL_DEMO_CONNECTIONS);
+      });
   }, [loadState]);
 
-  // Debounced Auto-save to Local Storage & Local Vault (100% client-side, ignored by Git)
+  // Debounced Auto-save to Local Vault & Sync to Disk /api/vault (100% local, client/disk sync)
   useEffect(() => {
     const timeout = setTimeout(() => {
       const activeNodes = nodes.filter((n) => !n.isDeleting);
@@ -254,9 +244,16 @@ export function PhysicsCanvas() {
       );
 
       saveLocalVault(activeNodes, activeConnections);
-      const dataToSave = serializeSnapshot(activeNodes, activeConnections);
-      localStorage.setItem('gravinote-saved-state', JSON.stringify(dataToSave));
-    }, 1000); // 1s debounce
+      
+      // Sync back to disk .md files silently
+      if (activeNodes.length > 0) {
+        fetch('/api/vault', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ action: 'save_all', nodes: activeNodes }),
+        }).catch(() => {});
+      }
+    }, 1500); // 1.5s debounce
 
     return () => clearTimeout(timeout);
   }, [nodes, connections]);

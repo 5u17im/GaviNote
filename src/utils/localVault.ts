@@ -1,7 +1,7 @@
 import { NodeMeta, Connection, NodeCategory } from '../types/node.types';
 
-const VAULT_STORAGE_KEY = 'gravinote_second_brain_vault_v1';
-const VAULT_METADATA_KEY = 'gravinote_second_brain_vault_meta';
+const VAULT_STORAGE_KEY = 'gravinote_second_brain_vault_v2';
+const VAULT_METADATA_KEY = 'gravinote_second_brain_vault_meta_v2';
 
 export interface LocalVaultData {
   version: string;

@@ -18,8 +18,7 @@ export function usePhysicsEngine(gravityY: number) {
     const runner = Matter.Runner.create({
       delta: 1000 / 60,
     });
-    (runner as any).isFixed = true;
-    (runner as any).maxUpdates = 60;
+    Object.assign(runner, { isFixed: true, maxUpdates: 60 });
     runnerRef.current = runner;
     Matter.Runner.run(runner, engine);
 

@@ -82,11 +82,9 @@ export function VaultManagerModal({
   };
 
   const handleResetDemo = () => {
-    if (confirm('¿Restaurar el ecosistema completo de NothingSense? Se recargarán los proyectos y sus conexiones.')) {
-      onLoadState(INITIAL_DEMO_NODES, INITIAL_DEMO_CONNECTIONS);
-      saveLocalVault(INITIAL_DEMO_NODES, INITIAL_DEMO_CONNECTIONS);
-      onClose();
-    }
+    onLoadState(INITIAL_DEMO_NODES, INITIAL_DEMO_CONNECTIONS);
+    saveLocalVault(INITIAL_DEMO_NODES, INITIAL_DEMO_CONNECTIONS);
+    onClose();
   };
 
   const handleClearAll = () => {

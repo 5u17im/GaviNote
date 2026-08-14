@@ -23,7 +23,6 @@ import {
   Tag,
   FolderLock,
   Brain,
-  Layers
 } from 'lucide-react';
 
 interface HUDPanelProps {
@@ -46,8 +45,6 @@ export function HUDPanel({
     connections,
     selectedId,
     physicsConfig,
-    searchQuery,
-    setSearchQuery,
     showConstellations,
     toggleConstellations,
     constellationMode,
@@ -60,13 +57,6 @@ export function HUDPanel({
     loadState,
     addNode,
   } = useGraviStore();
-
-  const trimmedQuery = searchQuery.trim().toLowerCase();
-  const matchCount = trimmedQuery
-    ? nodes.filter((n) =>
-        `${n.title} ${n.content} ${n.tags.join(' ')}`.toLowerCase().includes(trimmedQuery)
-      ).length
-    : 0;
 
   const { gravity, airFriction, magnetStrength, panX, panY, vortexGravity = 1.0 } = physicsConfig;
 

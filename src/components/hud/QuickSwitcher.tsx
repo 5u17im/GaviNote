@@ -4,7 +4,7 @@ import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { NodeMeta } from '../../types/node.types';
 import { CATEGORY_INFO } from '../nodes/registry';
-import { Search, Plus, Sparkles, ArrowRight, CornerDownLeft, X } from 'lucide-react';
+import { Search, Plus, CornerDownLeft, X } from 'lucide-react';
 
 interface QuickSwitcherProps {
   isOpen: boolean;
@@ -30,9 +30,12 @@ export function QuickSwitcher({
   // Auto focus input on open
   useEffect(() => {
     if (isOpen) {
-      setQuery('');
-      setSelectedIndex(0);
-      setTimeout(() => inputRef.current?.focus(), 50);
+      const timer = setTimeout(() => {
+        setQuery('');
+        setSelectedIndex(0);
+        inputRef.current?.focus();
+      }, 10);
+      return () => clearTimeout(timer);
     }
   }, [isOpen]);
 
@@ -205,7 +208,7 @@ export function QuickSwitcher({
                 <div className="flex items-center gap-2 text-xs">
                   <Plus className="w-4 h-4 text-cyan-400" />
                   <span>
-                    Crear nueva nota: <strong className="text-white">"{query.trim()}"</strong>
+                    Crear nueva nota: <strong className="text-white">&ldquo;{query.trim()}&rdquo;</strong>
                   </span>
                 </div>
                 <CornerDownLeft className="w-3.5 h-3.5 opacity-60" />
@@ -214,7 +217,7 @@ export function QuickSwitcher({
 
             {filteredNodes.length === 0 && !showCreateOption && (
               <div className="py-8 text-center text-xs text-white/40">
-                No se encontraron notas con "{query}"
+                No se encontraron notas con &ldquo;{query}&rdquo;
               </div>
             )}
           </div>
